@@ -24,17 +24,6 @@ using Newtonsoft.Json;
 namespace cAlgo.Robots
 {
 
-    /// <summary>
-    /// Enumeratore per esporre nei parametri una scelta con menu a tendina
-    /// </summary>
-    public enum CapitalTo
-    {
-
-        Balance,
-        Equity
-
-    }
-
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class CBOTBASE : Robot
     {
@@ -52,8 +41,18 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti
         /// </summary>
-        public const string VERSION = "0.0.1";
+        public const string VERSION = "1.0.1";
 
+        /// <summary>
+        /// Enumeratore per esporre nei parametri una scelta con menu a tendina
+        /// </summary>
+        public enum CapitalTo
+        {
+
+            Balance,
+            Equity
+
+        }
 
         [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/cbot-base/")]
         public string ProductInfo { get; set; }
