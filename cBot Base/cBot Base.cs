@@ -29,17 +29,17 @@ namespace cAlgo.Robots
     {
 
         /// <summary>
-        /// ID prodotto, identificativo ctrader.guru
+        /// ID prodotto, identificativo, viene fornito da ctrader.guru, 60886 è il riferimento del template in uso
         /// </summary>
         public const int ID = 60886;
 
         /// <summary>
-        /// Nome del cBot, identificativo
+        /// Nome del cBot, identificativo, da modificare con il nome della propria creazione
         /// </summary>
         public const string NAME = "cBot Base";
 
         /// <summary>
-        /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti
+        /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
         public const string VERSION = "1.0.1";
 
