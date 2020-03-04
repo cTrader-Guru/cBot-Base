@@ -41,7 +41,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.1";
+        public const string VERSION = "1.0.2";
 
         /// <summary>
         /// Enumeratore per esporre nei parametri una scelta con menu a tendina
@@ -185,16 +185,19 @@ namespace cAlgo.Robots
         }
 
         /// <summary>
-        /// Effettua un controllo sul sito ctrader.guru per mezzo delle API per verificare la presenza di aggiornamenti
+        /// Effettua un controllo sul sito ctrader.guru per mezzo delle API per verificare la presenza di aggiornamenti, solo in realtime
         /// </summary>
         private void _checkProductUpdate()
         {
 
+            // --> Controllo solo se solo in realtime, evito le chiamate in backtest
+            if (RunningMode != RunningMode.RealTime) return;
+
             // --> Organizzo i dati per la richiesta degli aggiornamenti
-            Guru.API.RequestProductInfo Request = new Guru.API.RequestProductInfo
+            Guru.API.RequestProductInfo Request = new Guru.API.RequestProductInfo 
             {
 
-                MyProduct = new Guru.Product
+                MyProduct = new Guru.Product 
                 {
 
                     ID = ID,
@@ -216,7 +219,8 @@ namespace cAlgo.Robots
 
                 Print("{0} Exception : {1}", NAME, Response.ProductInfo.Exception);
 
-            }// --> Chiedo conferma della presenza di nuovi aggiornamenti
+            }
+            // --> Chiedo conferma della presenza di nuovi aggiornamenti
             else if (Response.HaveNewUpdate())
             {
 
@@ -250,7 +254,8 @@ namespace cAlgo.Robots
         {
 
             // --> La condizione primaria deve essere presente altrimenti non serve continuare
-            if (!condition) return false;
+            if (!condition)
+                return false;
 
             // --> Criteri da stabilire
             return true;
@@ -266,7 +271,8 @@ namespace cAlgo.Robots
         {
 
             // --> La condizione primaria deve essere presente altrimenti non serve continuare
-            if (!condition) return false;
+            if (!condition)
+                return false;
 
             // --> Criteri da stabilire
             return true;
@@ -282,7 +288,8 @@ namespace cAlgo.Robots
         {
 
             // --> Il filtro primario deve essere presente altrimenti non serve continuare
-            if (!filter) return false;
+            if (!filter)
+                return false;
 
             // --> Criteri da stabilire
             return false;
@@ -298,7 +305,8 @@ namespace cAlgo.Robots
         {
 
             // --> Il filtro primario deve essere presente altrimenti non serve continuare
-            if (!filter) return false;
+            if (!filter)
+                return false;
 
             // --> Criteri da stabilire
             return false;
@@ -413,7 +421,8 @@ namespace cAlgo.Robots
         {
 
             // --> Se l'attivazione non è impostato vuol dire che non si vuole utilizzare questa funzione
-            if (BEfrom == 0) return;
+            if (BEfrom == 0)
+                return;
 
             // --> Agisco solo sulle operazioni che abbiamo aperto con il cbot
             var MyPositions = Positions.FindAll(MyLabel, Symbol.Name);
@@ -460,10 +469,12 @@ namespace cAlgo.Robots
         {
 
             // --> Se ho inserito uno stoploss questo verrà utilizzato per calcolare la size
-            if (SL > 0) return _getLotSize(_getMyCapital(MyCapital), SL, MyRisk, MinLots, MaxLots);
+            if (SL > 0)
+                return _getLotSize(_getMyCapital(MyCapital), SL, MyRisk, MinLots, MaxLots);
 
             // --> Se non ho settato uno stoploss controllo se ho settato un valore fittizio di riferimento per il calcolo
-            if (FakeSL > 0) return _getLotSize(_getMyCapital(MyCapital), FakeSL, MyRisk, MinLots, MaxLots);
+            if (FakeSL > 0)
+                return _getLotSize(_getMyCapital(MyCapital), FakeSL, MyRisk, MinLots, MaxLots);
 
             // --> A questo punto desidero lavorare solo con la size minima
             return MinLots;
@@ -494,9 +505,11 @@ namespace cAlgo.Robots
 
             double lots = Math.Round(Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
 
-            if (lots < Minim) return Minim;
+            if (lots < Minim)
+                return Minim;
 
-            if (lots > Maxi) return Maxi;
+            if (lots > Maxi)
+                return Maxi;
 
             return lots;
 
@@ -511,8 +524,8 @@ namespace cAlgo.Robots
                 case CapitalTo.Equity:
 
                     return Account.Equity;
-
                 default:
+
 
                     return Account.Balance;
 
@@ -624,26 +637,39 @@ namespace Guru
             RequestProduct = Request;
 
             // --> Non controllo se non ho l'ID del prodotto
-            if (Request.MyProduct.ID <= 0) return;
+            if (Request.MyProduct.ID <= 0)
+                return;
 
             // --> Dobbiamo supervisionare la chiamata per registrare l'eccexione
             try
             {
 
                 // --> Strutturo le informazioni per la richiesta POST
-                NameValueCollection data = new NameValueCollection
+                NameValueCollection data = new NameValueCollection 
                 {
-                    { "account_broker", Request.AccountBroker },
-                    { "account_number", Request.AccountNumber.ToString() },
-                    { "my_version", Request.MyProduct.Version },
-                    { "productid", Request.MyProduct.ID.ToString() }
+                    {
+                        "account_broker",
+                        Request.AccountBroker
+                    },
+                    {
+                        "account_number",
+                        Request.AccountNumber.ToString()
+                    },
+                    {
+                        "my_version",
+                        Request.MyProduct.Version
+                    },
+                    {
+                        "productid",
+                        Request.MyProduct.ID.ToString()
+                    }
                 };
 
                 // --> Autorizzo tutte le pagine di questo dominio
                 Uri myuri = new Uri(Service);
                 string pattern = string.Format("{0}://{1}/.*", myuri.Scheme, myuri.Host);
 
-                Regex urlRegEx = new Regex(@pattern);
+                Regex urlRegEx = new Regex(pattern);
                 WebPermission p = new WebPermission(NetworkAccess.Connect, urlRegEx);
                 p.Assert();
 
@@ -664,8 +690,7 @@ namespace Guru
                 // -->>> Nel cBot necessita l'attivazione di "AccessRights = AccessRights.FullAccess"
                 ProductInfo.LastProduct = JsonConvert.DeserializeObject<Product>(ProductInfo.Source);
 
-            }
-            catch (Exception Exp)
+            } catch (Exception Exp)
             {
 
                 // --> Qualcosa è andato storto, registro l'eccezione
