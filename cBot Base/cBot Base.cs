@@ -34,7 +34,7 @@ namespace cAlgo.Robots
         public const int ID = 60886;
 
         /// <summary>
-        /// Nome del cBot, identificativo, da modificare con il nome della propria creazione
+        /// Nome del prodotto, identificativo, da modificare con il nome della propria creazione
         /// </summary>
         public const string NAME = "cBot Base";
 
@@ -191,7 +191,8 @@ namespace cAlgo.Robots
         {
 
             // --> Controllo solo se solo in realtime, evito le chiamate in backtest
-            if (RunningMode != RunningMode.RealTime) return;
+            if (RunningMode != RunningMode.RealTime)
+                return;
 
             // --> Organizzo i dati per la richiesta degli aggiornamenti
             Guru.API.RequestProductInfo Request = new Guru.API.RequestProductInfo 
