@@ -29,6 +29,21 @@ namespace cAlgo.Robots
     public class CBOTBASE : Robot
     {
 
+        #region Enums
+
+        /// <summary>
+        /// Enumeratore per esporre nei parametri una scelta con menu a tendina
+        /// </summary>
+        public enum CapitalTo
+        {
+
+            Balance,
+            Equity
+
+        }
+
+        #endregion
+
         #region Identity
 
         /// <summary>
@@ -47,22 +62,7 @@ namespace cAlgo.Robots
         public const string VERSION = "1.0.3";
 
         #endregion
-
-        #region Enums
-
-        /// <summary>
-        /// Enumeratore per esporre nei parametri una scelta con menu a tendina
-        /// </summary>
-        public enum CapitalTo
-        {
-
-            Balance,
-            Equity
-
-        }
-
-        #endregion
-
+        
         #region Params
 
         [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/cbot-base/")]
