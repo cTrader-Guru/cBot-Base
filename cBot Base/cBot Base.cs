@@ -1,4 +1,4 @@
-﻿/*  CTRADER GURU -->
+﻿/*  CTRADER GURU --> Template 1.0.3
 
     Homepage    : https://ctrader.guru/
     Telegram    : https://t.me/ctraderguru
@@ -24,9 +24,12 @@ using Newtonsoft.Json;
 namespace cAlgo.Robots
 {
 
+    // --> AccessRights = AccessRights.FullAccess se si vuole controllare gli aggiornamenti
     [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
     public class CBOTBASE : Robot
     {
+
+        #region Identity
 
         /// <summary>
         /// ID prodotto, identificativo, viene fornito da ctrader.guru, 60886 è il riferimento del template in uso
@@ -41,7 +44,11 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.2";
+        public const string VERSION = "1.0.3";
+
+        #endregion
+
+        #region Enums
 
         /// <summary>
         /// Enumeratore per esporre nei parametri una scelta con menu a tendina
@@ -53,6 +60,10 @@ namespace cAlgo.Robots
             Equity
 
         }
+
+        #endregion
+
+        #region Params
 
         [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/cbot-base/")]
         public string ProductInfo { get; set; }
@@ -105,10 +116,18 @@ namespace cAlgo.Robots
         [Parameter("Max Number of Trades", Group = "Filters", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MaxTrades { get; set; }
 
+        #endregion
+
+        #region Property
+
         /// <summary>
         /// Flag che scandisce il cambio candela
         /// </summary>
         bool openedInThisBar = false;
+
+        #endregion
+
+        #region cBot Events
 
         /// <summary>
         /// Evento generato quando viene avviato il cBot
@@ -183,6 +202,10 @@ namespace cAlgo.Robots
             }
 
         }
+
+        #endregion
+
+        #region Private Methods
 
         /// <summary>
         /// Effettua un controllo sul sito ctrader.guru per mezzo delle API per verificare la presenza di aggiornamenti, solo in realtime
@@ -533,6 +556,8 @@ namespace cAlgo.Robots
             }
 
         }
+
+        #endregion
 
     }
 
