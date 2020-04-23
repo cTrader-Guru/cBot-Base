@@ -63,7 +63,7 @@ namespace cAlgo.Robots
         public const string VERSION = "1.0.4";
 
         #endregion
-        
+
         #region Params
 
         [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/cbot-base/")]
@@ -609,7 +609,7 @@ namespace Guru
         /// Variabile dove verranno inserite le direttive per la richiesta
         /// </summary>
         private RequestProductInfo RequestProduct = new RequestProductInfo();
-        
+
         /// <summary>
         /// Il percorso della cartella dove riporre i cookie
         /// </summary>
@@ -637,8 +637,7 @@ namespace Guru
                     return json;
                 }
 
-            }
-            catch 
+            } catch
             {
 
                 return null;
@@ -671,10 +670,9 @@ namespace Guru
 
                 return true;
 
-            }
-            catch 
+            } catch
             {
-               
+
                 return false;
 
             }
@@ -757,7 +755,7 @@ namespace Guru
 
                 string json = _loadSetup();
 
-                if( json != null && json.Trim().Length > 0 )
+                if (json != null && json.Trim().Length > 0)
                 {
 
                     json = json.Trim();
@@ -776,8 +774,7 @@ namespace Guru
 
                 }
 
-            }
-            catch( Exception Exp )
+            } catch (Exception Exp)
             {
 
                 // --> Setup corrotto ? resetto!
