@@ -183,6 +183,8 @@ namespace cAlgo
         public class Monitor
         {
 
+            private Positions _allPositions = null;
+
             /// <summary>
             /// Standard per la raccolta di informazioni nel Monitor
             /// </summary>
@@ -208,7 +210,7 @@ namespace cAlgo
             /// <summary>
             /// Il Simbolo da monitorare in relazione alla Label
             /// </summary>
-            public readonly Symbol Symbol;
+            public readonly Symbol Symbol;            
 
             /// <summary>
             /// Le informazioni raccolte dopo la chiamata .Update()
@@ -226,29 +228,30 @@ namespace cAlgo
             /// <param name="NewLabel">Valore univoco che identifica la strategia</param>
             /// <param name="NewSymbolName">Il Simbolo che si dersidera monitorare</param>
             /// <param name="AllPositions">Le posizioni da filtrare con il quale verranno raccolte le informazioni</param>
-            public Monitor(string NewLabel, Symbol NewSymbol, Positions AllPositions = null)
+            public Monitor(string NewLabel, Symbol NewSymbol, Positions AllPositions)
             {
 
                 Label = NewLabel;
                 Symbol = NewSymbol;
 
-                if (AllPositions != null) Update(AllPositions);
+                _allPositions = AllPositions;
+
+                Update();
 
             }
 
             /// <summary>
             /// Filtra e rende disponibili le informazioni per la strategia monitorata
             /// </summary>
-            /// <param name="AllPositions">Tutte le operazioni aperte in senso generico</param>
-            public Information Update(Positions AllPositions)
+            public Information Update()
             {
-
+                
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
-                Positions = AllPositions.FindAll(Label, Symbol.Name);
+                Positions = _allPositions.FindAll(Label, Symbol.Name);
 
                 // --> Resetto le informazioni
                 Info = new Information();
-
+                
                 double tmpVolume = 0;
 
                 foreach (Position position in Positions)
@@ -285,8 +288,10 @@ namespace cAlgo
 
                 }
 
-                Info.MidVolumeInUnits = Symbol.NormalizeVolumeInUnits(tmpVolume / Positions.Length,RoundingMode.ToNearest);
-                
+                // --> Restituisce una Exception Overflow di una operazione aritmetica, da approfondire
+                //     Info.MidVolumeInUnits = Symbol.NormalizeVolumeInUnits(tmpVolume / Positions.Length,RoundingMode.ToNearest);
+                Info.MidVolumeInUnits = Math.Round( tmpVolume / Positions.Length, 0);
+
                 return Info;
 
             }
@@ -568,7 +573,7 @@ namespace cAlgo.Robots
         {
 
             // --> Aggiorno le informazioni necessarie per gestire la strategia
-            Monitor1.Update(Positions);
+            Monitor1.Update();
 
             // --> Controllo se ci sono posizioni da chiudere prima di procedere con la logica
             _checkClosePositions();
