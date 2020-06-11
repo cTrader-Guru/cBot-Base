@@ -1,4 +1,4 @@
-﻿/*  CTRADER GURU --> Indicator Template 1.0.6
+﻿/*  CTRADER GURU
 
     Homepage    : https://ctrader.guru/
     Telegram    : https://t.me/ctraderguru
@@ -12,6 +12,419 @@
 using System;
 using cAlgo.API;
 using cAlgo.API.Internals;
+
+namespace cAlgo
+{
+    /// <summary>
+    /// Estensioni che rendono il codice più scorrevole con metodi non previsti dalla libreria cAlgo
+    /// </summary>
+    public static class Extensions
+    {
+
+        #region Enum
+
+        /// <summary>
+        /// Enumeratore per esporre il nome del colore nelle opzioni
+        /// </summary>
+        public enum ColorNameEnum
+        {
+
+            AliceBlue,
+            AntiqueWhite,
+            Aqua,
+            Aquamarine,
+            Azure,
+            Beige,
+            Bisque,
+            Black,
+            BlanchedAlmond,
+            Blue,
+            BlueViolet,
+            Brown,
+            BurlyWood,
+            CadetBlue,
+            Chartreuse,
+            Chocolate,
+            Coral,
+            CornflowerBlue,
+            Cornsilk,
+            Crimson,
+            Cyan,
+            DarkBlue,
+            DarkCyan,
+            DarkGoldenrod,
+            DarkGray,
+            DarkGreen,
+            DarkKhaki,
+            DarkMagenta,
+            DarkOliveGreen,
+            DarkOrange,
+            DarkOrchid,
+            DarkRed,
+            DarkSalmon,
+            DarkSeaGreen,
+            DarkSlateBlue,
+            DarkSlateGray,
+            DarkTurquoise,
+            DarkViolet,
+            DeepPink,
+            DeepSkyBlue,
+            DimGray,
+            DodgerBlue,
+            Firebrick,
+            FloralWhite,
+            ForestGreen,
+            Fuchsia,
+            Gainsboro,
+            GhostWhite,
+            Gold,
+            Goldenrod,
+            Gray,
+            Green,
+            GreenYellow,
+            Honeydew,
+            HotPink,
+            IndianRed,
+            Indigo,
+            Ivory,
+            Khaki,
+            Lavender,
+            LavenderBlush,
+            LawnGreen,
+            LemonChiffon,
+            LightBlue,
+            LightCoral,
+            LightCyan,
+            LightGoldenrodYellow,
+            LightGray,
+            LightGreen,
+            LightPink,
+            LightSalmon,
+            LightSeaGreen,
+            LightSkyBlue,
+            LightSlateGray,
+            LightSteelBlue,
+            LightYellow,
+            Lime,
+            LimeGreen,
+            Linen,
+            Magenta,
+            Maroon,
+            MediumAquamarine,
+            MediumBlue,
+            MediumOrchid,
+            MediumPurple,
+            MediumSeaGreen,
+            MediumSlateBlue,
+            MediumSpringGreen,
+            MediumTurquoise,
+            MediumVioletRed,
+            MidnightBlue,
+            MintCream,
+            MistyRose,
+            Moccasin,
+            NavajoWhite,
+            Navy,
+            OldLace,
+            Olive,
+            OliveDrab,
+            Orange,
+            OrangeRed,
+            Orchid,
+            PaleGoldenrod,
+            PaleGreen,
+            PaleTurquoise,
+            PaleVioletRed,
+            PapayaWhip,
+            PeachPuff,
+            Peru,
+            Pink,
+            Plum,
+            PowderBlue,
+            Purple,
+            Red,
+            RosyBrown,
+            RoyalBlue,
+            SaddleBrown,
+            Salmon,
+            SandyBrown,
+            SeaGreen,
+            SeaShell,
+            Sienna,
+            Silver,
+            SkyBlue,
+            SlateBlue,
+            SlateGray,
+            Snow,
+            SpringGreen,
+            SteelBlue,
+            Tan,
+            Teal,
+            Thistle,
+            Tomato,
+            Transparent,
+            Turquoise,
+            Violet,
+            Wheat,
+            White,
+            WhiteSmoke,
+            Yellow,
+            YellowGreen
+
+        }
+
+        #endregion
+
+        #region Class
+
+        /// <summary>
+        /// Classe per monitorare le posizioni di una specifica strategia
+        /// </summary>
+        public class Monitor
+        {
+
+            /// <summary>
+            /// Standard per la raccolta di informazioni nel Monitor
+            /// </summary>
+            public class Information
+            {
+
+                public double TotalNetProfit = 0;
+                public double MinVolumeInUnits = 0;
+                public double MaxVolumeInUnits = 0;
+                public double MidVolumeInUnits = 0;
+                public int BuyPositions = 0;
+                public int SellPositions = 0;
+                public Position FirstPosition = null;
+                public Position LastPosition = null;
+
+            }
+
+            /// <summary>
+            /// Valore univoco che identifica la strategia
+            /// </summary>
+            public readonly string Label;
+
+            /// <summary>
+            /// Il Simbolo da monitorare in relazione alla Label
+            /// </summary>
+            public readonly Symbol Symbol;
+
+            /// <summary>
+            /// Le informazioni raccolte dopo la chiamata .Update()
+            /// </summary>
+            public Information Info { get; private set; }
+
+            /// <summary>
+            /// Le posizioni filtrate
+            /// </summary>
+            public Position[] Positions { get; private set; }
+
+            /// <summary>
+            /// Monitor per la raccolta d'informazioni inerenti la strategia in corso
+            /// </summary>
+            /// <param name="NewLabel">Valore univoco che identifica la strategia</param>
+            /// <param name="NewSymbolName">Il Simbolo che si dersidera monitorare</param>
+            /// <param name="AllPositions">Le posizioni da filtrare con il quale verranno raccolte le informazioni</param>
+            public Monitor(string NewLabel, Symbol NewSymbol, Positions AllPositions = null)
+            {
+
+                Label = NewLabel;
+                Symbol = NewSymbol;
+
+                if (AllPositions != null) Update(AllPositions);
+
+            }
+
+            /// <summary>
+            /// Filtra e rende disponibili le informazioni per la strategia monitorata
+            /// </summary>
+            /// <param name="AllPositions">Tutte le operazioni aperte in senso generico</param>
+            public Information Update(Positions AllPositions)
+            {
+
+                // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
+                Positions = AllPositions.FindAll(Label, Symbol.Name);
+
+                // --> Resetto le informazioni
+                Info = new Information();
+
+                double tmpVolume = 0;
+
+                foreach (Position position in Positions)
+                {
+
+                    Info.TotalNetProfit += position.NetProfit;
+                    tmpVolume += position.VolumeInUnits;
+
+                    switch (position.TradeType)
+                    {
+                        case TradeType.Buy:
+
+                            Info.BuyPositions++;
+                            break;
+
+                        case TradeType.Sell:
+
+                            Info.SellPositions++;
+                            break;
+
+                    }
+
+                    if (Info.FirstPosition == null || position.EntryTime < Info.FirstPosition.EntryTime)
+                        Info.FirstPosition = position;
+
+                    if (Info.LastPosition == null || position.EntryTime > Info.LastPosition.EntryTime)
+                        Info.LastPosition = position;
+
+                    if (Info.MinVolumeInUnits == 0 || position.VolumeInUnits < Info.MinVolumeInUnits)
+                        Info.MinVolumeInUnits = position.VolumeInUnits;
+
+                    if (Info.MaxVolumeInUnits == 0 || position.VolumeInUnits > Info.MaxVolumeInUnits)
+                        Info.MaxVolumeInUnits = position.VolumeInUnits;
+
+                }
+
+                Info.MidVolumeInUnits = Symbol.NormalizeVolumeInUnits(tmpVolume / Positions.Length,RoundingMode.ToNearest);
+                
+                return Info;
+
+            }
+
+        }
+
+        #endregion
+
+        #region Helper
+
+        /// <summary>
+        /// Restituisce il colore corrispondente a partire dal nome
+        /// </summary>
+        /// <returns>Il colore corrispondente</returns>
+        public static API.Color ColorFromEnum(ColorNameEnum colorName)
+        {
+
+            return API.Color.FromName(colorName.ToString("G"));
+
+        }
+
+        #endregion
+
+        #region Bars
+
+        /// <summary>
+        /// Si ottiene l'indice della candela partendo dal suo orario di apertura
+        /// </summary>
+        /// <param name="MyTime">La data e l'ora di apertura della candela</param>
+        /// <returns></returns>
+        public static int GetIndexByDate(this Bars thisBars, DateTime thisTime)
+        {
+
+            for (int i = thisBars.ClosePrices.Count - 1; i >= 0; i--)
+            {
+
+                if (thisTime == thisBars.OpenTimes[i])
+                    return i;
+
+            }
+
+            return -1;
+
+        }
+
+        #endregion
+
+        #region Bar
+
+        /// <summary>
+        /// Misura la grandezza di una candela, tenendo conto della sua direzione
+        /// </summary>
+        /// <returns>Il corpo della candela, valore uguale o superiore a zero</returns>
+        public static double Body(this Bar thisBar)
+        {
+
+            return thisBar.IsBullish() ? thisBar.Close - thisBar.Open : thisBar.Open - thisBar.Close;
+
+
+        }
+
+        /// <summary>
+        /// Verifica la direzione rialzista di una candela
+        /// </summary>
+        /// <returns>True se la candela è rialzista</returns>        
+        public static bool IsBullish(this Bar thisBar)
+        {
+
+            return thisBar.Close > thisBar.Open;
+
+        }
+
+        /// <summary>
+        /// Verifica la direzione ribassista di una candela
+        /// </summary>
+        /// <returns>True se la candela è ribassista</returns>        
+        public static bool IsBearish(this Bar thisBar)
+        {
+
+            return thisBar.Close < thisBar.Open;
+
+        }
+
+        /// <summary>
+        /// Verifica se una candela ha un open uguale al close
+        /// </summary>
+        /// <returns>True se la candela è una doji con Open e Close uguali</returns>        
+        public static bool IsDoji(this Bar thisBar)
+        {
+
+            return thisBar.Close == thisBar.Open;
+
+        }
+
+        #endregion
+
+        #region Symbol
+
+        /// <summary>
+        /// Converte il numero di pips corrente da digits a double
+        /// </summary>
+        /// <param name="Pips">Il numero di pips nel formato Digits</param>
+        /// <returns></returns>
+        public static double DigitsToPips(this Symbol thisSymbol, double Pips)
+        {
+
+            return Math.Round(Pips / thisSymbol.PipSize, 2);
+
+        }
+
+        /// <summary>
+        /// Converte il numero di pips corrente da double a digits
+        /// </summary>
+        /// <param name="Pips">Il numero di pips nel formato Double (2)</param>
+        /// <returns></returns>
+        public static double PipsToDigits(this Symbol thisSymbol, double Pips)
+        {
+
+            return Math.Round(Pips * thisSymbol.PipSize, thisSymbol.Digits);
+
+        }
+
+        #endregion
+
+        #region Chart
+
+        public static bool CanDraw(this Chart thisChart, RunningMode thisRunning)
+        {
+
+            return thisRunning == RunningMode.RealTime || thisRunning == RunningMode.VisualBacktesting;
+
+        }
+
+        #endregion
+
+    }
+
+}
 
 namespace cAlgo.Robots
 {
@@ -36,7 +449,7 @@ namespace cAlgo.Robots
         #endregion
 
         #region Identity
-        
+
         /// <summary>
         /// Nome del prodotto, identificativo, da modificare con il nome della propria creazione
         /// </summary>
@@ -102,15 +515,20 @@ namespace cAlgo.Robots
         [Parameter("Max Number of Trades", Group = "Filters", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MaxTrades { get; set; }
 
+        [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral, MinValue = 1, Step = 1)]
+        public Extensions.ColorNameEnum TextColor { get; set; }
+
         #endregion
 
         #region Property
+
+        Extensions.Monitor Monitor1;
 
         /// <summary>
         /// Flag che scandisce il cambio candela
         /// </summary>
         bool openedInThisBar = false;
-
+        
         #endregion
 
         #region cBot Events
@@ -123,6 +541,12 @@ namespace cAlgo.Robots
 
             // --> Stampo nei log la versione corrente
             Print("{0} : {1}", NAME, VERSION);
+
+            // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
+            if(Chart.CanDraw(RunningMode))Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
+
+            // --> Inizializzo il Monitor
+            Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Positions);
 
         }
 
@@ -142,6 +566,9 @@ namespace cAlgo.Robots
         /// </summary>
         protected override void OnTick()
         {
+
+            // --> Aggiorno le informazioni necessarie per gestire la strategia
+            Monitor1.Update(Positions);
 
             // --> Controllo se ci sono posizioni da chiudere prima di procedere con la logica
             _checkClosePositions();
