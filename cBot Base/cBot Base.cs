@@ -172,6 +172,17 @@ namespace cAlgo
             YellowGreen
 
         }
+        
+        /// <summary>
+        /// Enumeratore per esporre nei parametri una scelta con menu a tendina
+        /// </summary>
+        public enum CapitalTo
+        {
+
+            Balance,
+            Equity
+
+        }
 
         #endregion
 
@@ -294,6 +305,156 @@ namespace cAlgo
                 Info.MidVolumeInUnits = Math.Round(tmpVolume / Positions.Length, 0);
 
                 return Info;
+
+            }
+
+        }
+
+        public class MomenyManagement
+        {
+
+            private readonly double _minSize = 0.01;
+            private double _percentage = 0;
+            private double _fixedSize = 0;
+            private double _pipToCalc = 30;
+
+            
+            private IAccount _account = null;
+            private CapitalTo _capitalType = CapitalTo.Balance;
+            private Monitor _monitor = null;
+
+            public double Percentage
+            {
+
+                get
+                {
+
+                    return _percentage;
+
+                }
+
+                set
+                {
+                    _percentage = (value > 0 && value <= 100) ? value : 0;
+
+                }
+
+            }
+
+            public double FixedSize
+            {
+                get
+                {
+
+                    return _fixedSize;
+
+                }
+
+                set
+                {
+
+                    _fixedSize = (value >= _minSize) ? value : 0;
+
+                }
+
+            }
+
+            public double PipToCalc
+            {
+                get
+                {
+
+                    return _pipToCalc;
+
+                }
+
+                set
+                {
+
+                    _pipToCalc = (value > 0) ? value : 30;
+
+                }
+
+            }
+
+            public CapitalTo CapitalType
+            {
+
+                get
+                {
+
+                    return _capitalType;
+
+                }
+
+                set
+                {
+
+                    _capitalType = value;
+
+                }
+
+            }
+
+            public double Capital
+            {
+
+                get
+                {
+
+                    switch (_capitalType)
+                    {
+
+                        case CapitalTo.Equity:
+
+                            return _account.Equity;
+
+                        default:
+
+                            return _account.Balance;
+
+                    }
+
+                }
+
+            }
+
+            public MomenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Monitor NewMonitor)
+            {
+
+                _account = NewAccount;
+                _capitalType = NewCapitalTo;
+                _monitor = NewMonitor;
+
+                Percentage = NewPercentage;
+                FixedSize = NewFixedSize;
+                PipToCalc = NewPipToCalc;
+
+            }
+
+            /// <summary>
+            /// Restituisce il numero di lotti in formato 0.01
+            /// </summary>
+            public double GetLotSize()
+            {
+
+                // --> Hodeciso di usare una size fissa
+                if (FixedSize > 0) return FixedSize;
+
+                // --> La percentuale di rischio in denaro
+                double moneyrisk = Capital / 100 * Percentage;
+
+                // --> Traduco lo stoploss o il suo riferimento in double
+                double sl_double = PipToCalc * _monitor.Symbol.PipSize;
+
+                // --> In formato 0.01 = microlotto double lots = Math.Round(_monitor.Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
+                // --> In formato volume 1K = 1000 Math.Round((moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
+                double lots = Math.Round(_monitor.Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
+
+                if (lots < _minSize)
+                    return _minSize;
+
+                return lots;
 
             }
 
@@ -511,16 +672,7 @@ namespace cAlgo.Robots
 
         #region Enums
 
-        /// <summary>
-        /// Enumeratore per esporre nei parametri una scelta con menu a tendina
-        /// </summary>
-        public enum CapitalTo
-        {
-
-            Balance,
-            Equity
-
-        }
+        
 
         #endregion
 
@@ -564,8 +716,11 @@ namespace cAlgo.Robots
         [Parameter("Slippage (pips)", Group = "Money Management", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
         public double Slippage { get; set; }
 
-        [Parameter("Capital", Group = "Money Management", DefaultValue = CapitalTo.Balance)]
-        public CapitalTo MyCapital { get; set; }
+        [Parameter("Fixed Lots", Group = "Money Management", DefaultValue = 0, MinValue = 0, Step = 0.01)]
+        public double FixedLots { get; set; }
+
+        [Parameter("Capital", Group = "Money Management", DefaultValue = Extensions.CapitalTo.Balance)]
+        public Extensions.CapitalTo MyCapital { get; set; }
 
         [Parameter("% Risk", Group = "Money Management", DefaultValue = 1, MinValue = 0.1, Step = 0.1)]
         public double MyRisk { get; set; }
@@ -575,9 +730,6 @@ namespace cAlgo.Robots
 
         [Parameter("Minimum Lots", Group = "Money Management", DefaultValue = 0.01, MinValue = 0.01, Step = 0.01)]
         public double MinLots { get; set; }
-
-        [Parameter("Maximum Lots", Group = "Money Management", DefaultValue = 10, MinValue = 0.01, Step = 0.01)]
-        public double MaxLots { get; set; }
 
         [Parameter("Pause over this time", Group = "Filters", DefaultValue = 21.3, MinValue = 0, MaxValue = 23.59)]
         public double PauseOver { get; set; }
@@ -599,6 +751,7 @@ namespace cAlgo.Robots
         #region Property
 
         Extensions.Monitor Monitor1;
+        Extensions.MomenyManagement MomenyManagement1;
 
         /// <summary>
         /// Flag che scandisce il cambio candela
@@ -624,6 +777,9 @@ namespace cAlgo.Robots
 
             // --> Inizializzo il Monitor
             Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Positions);
+
+            // --> Inizializzo il MoneyManagement
+            MomenyManagement1 = new Extensions.MomenyManagement( Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1 );
             
         }
 
@@ -670,7 +826,7 @@ namespace cAlgo.Robots
             }
 
             // --> Calcolo la size in base al money management stabilito
-            var volumeInUnits = Symbol.QuantityToVolumeInUnits(_calculateSize());
+            var volumeInUnits = Symbol.QuantityToVolumeInUnits(MomenyManagement1.GetLotSize());
 
             // --> Se ho il segnale d'ingresso considerando i filtri allora procedo con l'ordine a mercato
             if (triggerBuy)
@@ -916,78 +1072,6 @@ namespace cAlgo.Robots
                         break;
 
                 }
-
-            }
-
-        }
-
-        /// <summary>
-        /// Calcola la size da utilizzare secondo i parametri stabiliti
-        /// </summary>
-        /// <returns>I lotti da investire</returns>
-        private double _calculateSize()
-        {
-
-            // --> Se ho inserito uno stoploss questo verrà utilizzato per calcolare la size
-            if (SL > 0)
-                return _getLotSize(_getMyCapital(MyCapital), SL, MyRisk, MinLots, MaxLots);
-
-            // --> Se non ho settato uno stoploss controllo se ho settato un valore fittizio di riferimento per il calcolo
-            if (FakeSL > 0)
-                return _getLotSize(_getMyCapital(MyCapital), FakeSL, MyRisk, MinLots, MaxLots);
-
-            // --> A questo punto desidero lavorare solo con la size minima
-            return MinLots;
-
-        }
-
-        /// <summary>
-        /// Restituisce la size da investire tenendo conto dei criteri di calcolo stabiliti
-        /// </summary>
-        /// <param name="capital">La base sul quale fare il conteggio delle proporzioni</param>
-        /// <param name="stoploss">Il riferimento per il calcolo</param>
-        /// <param name="percentage">La percentuale in base al "capital"</param>
-        /// <param name="Minim">Il valore minimo accettabile</param>
-        /// <param name="Maxi">Il valore massimo accettabile</param>
-        /// <returns></returns>
-        private double _getLotSize(double capital, double stoploss, double percentage, double Minim, double Maxi)
-        {
-
-            // --> La percentuale di rischio in denaro
-            double moneyrisk = capital / 100 * percentage;
-
-            // --> Traduco lo stoploss o il suo riferimento in double
-            double sl_double = stoploss * Symbol.PipSize;
-
-            // --> In formato 0.01 = microlotto double lots = Math.Round(Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
-
-            // --> In formato volume 1K = 1000 Math.Round((moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2); // *
-
-            double lots = Math.Round(Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
-
-            if (lots < Minim)
-                return Minim;
-
-            if (lots > Maxi)
-                return Maxi;
-
-            return lots;
-
-        }
-
-        private double _getMyCapital(CapitalTo x)
-        {
-
-            switch (x)
-            {
-
-                case CapitalTo.Equity:
-
-                    return Account.Equity;
-                default:
-
-
-                    return Account.Balance;
 
             }
 
