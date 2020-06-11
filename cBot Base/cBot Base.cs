@@ -210,7 +210,7 @@ namespace cAlgo
             /// <summary>
             /// Il Simbolo da monitorare in relazione alla Label
             /// </summary>
-            public readonly Symbol Symbol;            
+            public readonly Symbol Symbol;
 
             /// <summary>
             /// Le informazioni raccolte dopo la chiamata .Update()
@@ -236,6 +236,7 @@ namespace cAlgo
 
                 _allPositions = AllPositions;
 
+                // --> Rendiamo sin da subito disponibili le informazioni
                 Update();
 
             }
@@ -245,13 +246,13 @@ namespace cAlgo
             /// </summary>
             public Information Update()
             {
-                
+
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
                 Positions = _allPositions.FindAll(Label, Symbol.Name);
 
                 // --> Resetto le informazioni
                 Info = new Information();
-                
+
                 double tmpVolume = 0;
 
                 foreach (Position position in Positions)
@@ -290,7 +291,7 @@ namespace cAlgo
 
                 // --> Restituisce una Exception Overflow di una operazione aritmetica, da approfondire
                 //     Info.MidVolumeInUnits = Symbol.NormalizeVolumeInUnits(tmpVolume / Positions.Length,RoundingMode.ToNearest);
-                Info.MidVolumeInUnits = Math.Round( tmpVolume / Positions.Length, 0);
+                Info.MidVolumeInUnits = Math.Round(tmpVolume / Positions.Length, 0);
 
                 return Info;
 
@@ -418,10 +419,80 @@ namespace cAlgo
 
         #region Chart
 
+        /// <summary>
+        /// Determina se ci sono le condizioni per disegnare sul grafico
+        /// </summary>
         public static bool CanDraw(this Chart thisChart, RunningMode thisRunning)
         {
 
             return thisRunning == RunningMode.RealTime || thisRunning == RunningMode.VisualBacktesting;
+
+        }
+
+        #endregion
+
+        #region TimeFrame
+
+        /// <summary>
+        /// Restituisce in minuti il timeframe corrente
+        /// </summary>
+        public static int ToMinutes(this TimeFrame thisTimeFrame)
+        {
+
+            if (thisTimeFrame == TimeFrame.Daily)
+                return 60 * 24;
+            if (thisTimeFrame == TimeFrame.Day2)
+                return 60 * 24 * 2;
+            if (thisTimeFrame == TimeFrame.Day3)
+                return 60 * 24 * 3;
+            if (thisTimeFrame == TimeFrame.Hour)
+                return 60;
+            if (thisTimeFrame == TimeFrame.Hour12)
+                return 60 * 12;
+            if (thisTimeFrame == TimeFrame.Hour2)
+                return 60 * 2;
+            if (thisTimeFrame == TimeFrame.Hour3)
+                return 60 * 3;
+            if (thisTimeFrame == TimeFrame.Hour4)
+                return 60 * 4;
+            if (thisTimeFrame == TimeFrame.Hour6)
+                return 60 * 6;
+            if (thisTimeFrame == TimeFrame.Hour8)
+                return 60 * 8;
+            if (thisTimeFrame == TimeFrame.Minute)
+                return 1;
+            if (thisTimeFrame == TimeFrame.Minute10)
+                return 10;
+            if (thisTimeFrame == TimeFrame.Minute15)
+                return 15;
+            if (thisTimeFrame == TimeFrame.Minute2)
+                return 2;
+            if (thisTimeFrame == TimeFrame.Minute20)
+                return 20;
+            if (thisTimeFrame == TimeFrame.Minute3)
+                return 3;
+            if (thisTimeFrame == TimeFrame.Minute30)
+                return 30;
+            if (thisTimeFrame == TimeFrame.Minute4)
+                return 4;
+            if (thisTimeFrame == TimeFrame.Minute45)
+                return 45;
+            if (thisTimeFrame == TimeFrame.Minute5)
+                return 5;
+            if (thisTimeFrame == TimeFrame.Minute6)
+                return 6;
+            if (thisTimeFrame == TimeFrame.Minute7)
+                return 7;
+            if (thisTimeFrame == TimeFrame.Minute8)
+                return 8;
+            if (thisTimeFrame == TimeFrame.Minute9)
+                return 9;
+            if (thisTimeFrame == TimeFrame.Monthly)
+                return 60 * 24 * 30;
+            if (thisTimeFrame == TimeFrame.Weekly)
+                return 60 * 24 * 7;
+
+            return 0;
 
         }
 
@@ -533,7 +604,7 @@ namespace cAlgo.Robots
         /// Flag che scandisce il cambio candela
         /// </summary>
         bool openedInThisBar = false;
-        
+
         #endregion
 
         #region cBot Events
@@ -548,11 +619,12 @@ namespace cAlgo.Robots
             Print("{0} : {1}", NAME, VERSION);
 
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
-            if(Chart.CanDraw(RunningMode))Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
+            if (Chart.CanDraw(RunningMode))
+                Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Inizializzo il Monitor
             Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Positions);
-
+            
         }
 
         /// <summary>
