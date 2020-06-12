@@ -213,6 +213,27 @@ namespace cAlgo
 
             }
 
+            public class PauseTimes
+            {
+
+                public double Over = 0;
+                public double Under = 0;
+
+            }
+
+            /// <summary>
+            /// Standard per la gestione del break even
+            /// </summary>
+            public class BreakEvenData
+            {
+
+                public double Activation = 0;
+                public double Pips = 0;
+
+            }
+
+            public bool OpenedInThisBar = false;
+
             /// <summary>
             /// Valore univoco che identifica la strategia
             /// </summary>
@@ -223,6 +244,10 @@ namespace cAlgo
             /// </summary>
             public readonly Symbol Symbol;
 
+            public readonly Bars Bars;
+
+            public readonly PauseTimes Pause;
+
             /// <summary>
             /// Le informazioni raccolte dopo la chiamata .Update()
             /// </summary>
@@ -232,30 +257,32 @@ namespace cAlgo
             /// Le posizioni filtrate
             /// </summary>
             public Position[] Positions { get; private set; }
-
+             
             /// <summary>
             /// Monitor per la raccolta d'informazioni inerenti la strategia in corso
             /// </summary>
             /// <param name="NewLabel">Valore univoco che identifica la strategia</param>
             /// <param name="NewSymbolName">Il Simbolo che si dersidera monitorare</param>
             /// <param name="AllPositions">Le posizioni da filtrare con il quale verranno raccolte le informazioni</param>
-            public Monitor(string NewLabel, Symbol NewSymbol, Positions AllPositions)
+            public Monitor(string NewLabel, Symbol NewSymbol, Bars NewBars, Positions AllPositions, PauseTimes NewPause)
             {
 
                 Label = NewLabel;
                 Symbol = NewSymbol;
+                Bars = NewBars;
+                Pause = NewPause;
 
                 _allPositions = AllPositions;
 
                 // --> Rendiamo sin da subito disponibili le informazioni
-                Update();
+                Update(false, null, null);
 
             }
 
             /// <summary>
             /// Filtra e rende disponibili le informazioni per la strategia monitorata. Eventualmente Chiude e gestisce le operazioni
             /// </summary>
-            public Information Update(bool closeall = false, TradeType? filtertype = null)
+            public Information Update(bool closeall, BreakEvenData breakevendata, TradeType? filtertype = null)
             {
 
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
@@ -269,11 +296,16 @@ namespace cAlgo
                 foreach (Position position in Positions)
                 {
 
-                    if (closeall && (filtertype == null || position.TradeType == filtertype)) {
+                    // --> Per prima cosa devo controllare se chiudere la posizione
+                    if (closeall && (filtertype == null || position.TradeType == filtertype))
+                    {
 
                         position.Close();
                         continue;
                     }
+
+                    // --> Poi tocca al break even
+                    _checkBreakEven(position, breakevendata);
 
                     Info.TotalNetProfit += position.NetProfit;
                     tmpVolume += position.VolumeInUnits;
@@ -320,7 +352,84 @@ namespace cAlgo
             public void CloseAllPositions(TradeType? filtertype = null)
             {
 
-                Update(true, filtertype);
+                Update(true, null, filtertype);
+
+            }
+
+            public bool InGAP(double distance)
+            {
+
+                return Symbol.DigitsToPips(Bars.LastGAP()) >= distance;
+
+            }
+
+            /// <summary>
+            /// Controlla la fascia oraria per determinare se rientra in quella di pausa, utilizza dati double 
+            /// perchè la ctrader non permette di esporre dati time, da aggiornare non appena la ctrader lo permette
+            /// </summary>
+            /// <returns>Conferma la presenza di una fascia oraria in pausa</returns>
+            public bool InPause(DateTime timeserver)
+            {
+
+                // -->> Poichè si utilizzano dati double per esporre i parametri dobbiamo utilizzare meccanismi per tradurre l'orario
+                string nowHour = (timeserver.Hour < 10) ? string.Format("0{0}", timeserver.Hour) : string.Format("{0}", timeserver.Hour);
+                string nowMinute = (timeserver.Minute < 10) ? string.Format("0{0}", timeserver.Minute) : string.Format("{0}", timeserver.Minute);
+
+                // --> Stabilisco il momento di controllo in formato double
+                double adesso = Convert.ToDouble(string.Format("{0},{1}", nowHour, nowMinute));
+
+                // --> Confronto elementare per rendere comprensibile la logica
+                if (Pause.Over < Pause.Under && adesso >= Pause.Over && adesso <= Pause.Under)
+                {
+
+                    return true;
+
+                }
+                else if (Pause.Over > Pause.Under && ((adesso >= Pause.Over && adesso <= 23.59) || adesso <= Pause.Under))
+                {
+
+                    return true;
+
+                }
+
+                return false;
+
+            }
+
+            /// <summary>
+            /// Controlla ed effettua la modifica in break-even se le condizioni le permettono
+            /// </summary>
+            private void _checkBreakEven(Position position, BreakEvenData breakevendata)
+            {
+
+                if (breakevendata == null || breakevendata.Activation == 0) return;
+
+                switch (position.TradeType)
+                {
+
+                    case TradeType.Buy:
+
+                        if ( (Symbol.Bid >= ( position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation ) ) ) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
+                        {
+
+                            position.ModifyStopLossPips(breakevendata.Pips);
+
+                        }
+
+                        break;
+
+                    case TradeType.Sell:
+
+                        if ( ( Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits( breakevendata.Activation ) ) ) && ( position.StopLoss == null || position.StopLoss > position.EntryPrice) )
+                        {
+
+                            position.ModifyStopLossPips(breakevendata.Pips);
+
+                        }
+
+                        break;
+
+                }
 
             }
 
@@ -329,7 +438,7 @@ namespace cAlgo
         /// <summary>
         /// Classe per gestire il dimensionamento delle size
         /// </summary>
-        public class MomenyManagement
+        public class MonenyManagement
         {
 
             private readonly double _minSize = 0.01;
@@ -351,39 +460,39 @@ namespace cAlgo
             /// </summary>
             public double Percentage
             {
-                
+
                 get { return _percentage; }
 
 
                 set { _percentage = (value > 0 && value <= 100) ? value : 0; }
-
             }
+
 
             /// <summary>
             /// La size fissa da utilizzare, bypassa tutti i parametri di calcolo
             /// </summary>
             public double FixedSize
             {
-                
+
                 get { return _fixedSize; }
 
 
 
                 set { _fixedSize = (value >= _minSize) ? value : 0; }
-
             }
+
 
             /// <summary>
             /// La distanza massima dall'ingresso con il quale calcolare le size
             /// </summary>
             public double PipToCalc
             {
-                
-                get { return _pipToCalc; }
-                               
-                set { _pipToCalc = (value > 0) ? value : 30; }
 
+                get { return _pipToCalc; }
+
+                set { _pipToCalc = (value > 0) ? value : 30; }
             }
+
 
             /// <summary>
             /// Il capitale effettivo sul quale calcolare il rischio
@@ -400,19 +509,19 @@ namespace cAlgo
                         case CapitalTo.Equity:
 
                             return _account.Equity;
-
                         default:
+
 
                             return _account.Balance;
 
                     }
 
                 }
-
             }
 
+
             // --> Costruttore
-            public MomenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Monitor NewMonitor)
+            public MonenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Monitor NewMonitor)
             {
 
                 _account = NewAccount;
@@ -490,6 +599,28 @@ namespace cAlgo
             }
 
             return -1;
+
+        }
+
+        public static double LastGAP(this Bars thisBars)
+        {
+
+            double K = 0;
+
+            if (thisBars.ClosePrices.Last(1) > thisBars.OpenPrices.LastValue)
+            {
+
+                K = Math.Round(thisBars.ClosePrices.Last(1) - thisBars.OpenPrices.LastValue);
+
+            }
+            else if (thisBars.ClosePrices.Last(1) < thisBars.OpenPrices.LastValue)
+            {
+
+                K = Math.Round(thisBars.OpenPrices.LastValue - thisBars.ClosePrices.Last(1));
+
+            }
+
+            return K;
 
         }
 
@@ -748,14 +879,11 @@ namespace cAlgo.Robots
 
         #region Property
 
+        Extensions.Monitor.PauseTimes Pause1;
         Extensions.Monitor Monitor1;
-        Extensions.MomenyManagement MomenyManagement1;
-
-        /// <summary>
-        /// Flag che scandisce il cambio candela
-        /// </summary>
-        bool openedInThisBar = false;
-
+        Extensions.MonenyManagement MonenyManagement1;
+        Extensions.Monitor.BreakEvenData BreakEvenData1;
+        
         #endregion
 
         #region cBot Events
@@ -773,11 +901,43 @@ namespace cAlgo.Robots
             if (Chart.CanDraw(RunningMode))
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
+            // --> Determino il range di pausa
+            Pause1 = new Extensions.Monitor.PauseTimes
+            {
+
+                Over = PauseOver,
+                Under = PauseUnder
+
+            };
+
             // --> Inizializzo il Monitor
-            Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Positions);
+            Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Bars, Positions, Pause1);
 
             // --> Inizializzo il MoneyManagement
-            MomenyManagement1 = new Extensions.MomenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
+            MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
+
+            // --> Inizializzo i dati per la gestione del breakeven
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
+            {
+
+                Activation = BEfrom,
+                Pips = BEto
+
+            };
+
+            // --> Osservo le aperture per operazioni comuni
+            Positions.Opened += _onOpenPositions;
+
+        }
+        
+        /// <summary>
+        /// Evento generato quando viene fermato il cBot
+        /// </summary>
+        protected override void OnStop()
+        {
+
+            // --> Meglio eliminare l'handler, non dovrebbe servire ma non si sa mai
+            Positions.Opened -= _onOpenPositions;
             
         }
 
@@ -788,7 +948,7 @@ namespace cAlgo.Robots
         {
 
             // --> Resetto il flag del controllo candela
-            openedInThisBar = false;
+            Monitor1.OpenedInThisBar = false;
 
         }
 
@@ -798,17 +958,38 @@ namespace cAlgo.Robots
         protected override void OnTick()
         {
 
+            _loop(Monitor1, MonenyManagement1, BreakEvenData1);
+
+        }
+
+        #endregion
+
+        #region Private Methods
+        
+        /// <summary>
+        /// Operazioni da compiere ogni volta che apro una posizione con questa label
+        /// </summary>
+        private void _onOpenPositions(PositionOpenedEventArgs eventArgs)
+        {
+
+            if( eventArgs.Position.Label == Monitor1.Label)
+            {
+
+                Monitor1.OpenedInThisBar = true;
+
+            }
+
+        }
+
+        private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata)
+        {
+
             // --> Aggiorno le informazioni necessarie per gestire la strategia
-            Monitor1.Update();
+            monitor.Update( _checkClosePositions(),breakevendata, null );
 
-            // --> Controllo se ci sono posizioni da chiudere prima di procedere con la logica
-            _checkClosePositions();
-
-            // --> Controllo se devo aggiornare/modificare le posizioni secondo la logica di breakeven
-            _checkBreakEven();
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
-            bool sharedCondition = (!openedInThisBar && !_iAmInGAP() && !_iAmInPause() && Monitor1.Symbol.RealSpread() <= SpreadToTrigger && Monitor1.Positions.Length < MaxTrades);
+            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
 
             // --> Controllo la presenza di trigger d'ingresso tenendo conto i filtri
             bool triggerBuy = _calculateLongTrigger(_calculateLongFilter(sharedCondition));
@@ -818,27 +999,25 @@ namespace cAlgo.Robots
             if (triggerBuy && triggerSell)
             {
 
-                Print("{0} {1} ERROR : trigger buy and sell !", MyLabel, Monitor1.Symbol.Name);
+                Print("{0} {1} ERROR : trigger buy and sell !", monitor.Label, monitor.Symbol.Name);
                 return;
 
             }
 
             // --> Calcolo la size in base al money management stabilito
-            double volumeInUnits = Monitor1.Symbol.QuantityToVolumeInUnits(MomenyManagement1.GetLotSize());
+            double volumeInUnits = Monitor1.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
 
             // --> Se ho il segnale d'ingresso considerando i filtri allora procedo con l'ordine a mercato
             if (triggerBuy)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Buy, Monitor1.Symbol.Name, volumeInUnits, Slippage, Monitor1.Symbol.Ask, MyLabel, SL, TP);
-                openedInThisBar = true;
+                ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, Slippage, monitor.Symbol.Ask, monitor.Label, SL, TP);
 
             }
             else if (triggerSell)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Sell, Monitor1.Symbol.Name, volumeInUnits, Slippage, Monitor1.Symbol.Bid, MyLabel, SL, TP);
-                openedInThisBar = true;
+                ExecuteMarketRangeOrder(TradeType.Sell, monitor.Symbol.Name, volumeInUnits, Slippage, monitor.Symbol.Bid, monitor.Label, SL, TP);
 
             }
 
@@ -846,16 +1025,16 @@ namespace cAlgo.Robots
 
         #endregion
 
-        #region Private Methods
+        #region Strategy
 
         /// <summary>
-        /// Controlla la presenza di posizioni da chiudere secondo i criteri stabiliti
+        /// Controlla e stabilisce se si devono chiudere tutte le posizioni
         /// </summary>
-        private void _checkClosePositions()
+        private bool _checkClosePositions()
         {
 
-            // --> Criteri da stabilire
-            return;
+            // --> Criteri da stabilire con la strategia
+            return false;
 
         }
 
@@ -924,112 +1103,6 @@ namespace cAlgo.Robots
 
             // --> Criteri da stabilire
             return false;
-
-        }
-
-        /// <summary>
-        /// Controlla lo stato in cui vi è un GAP tra la chiusura e l'apertura della nuova candela
-        /// </summary>
-        /// <returns>Conferma la presenza di un GAP secondo i parametri stabiliti</returns>
-        private bool _iAmInGAP()
-        {
-
-            double K = 0;
-
-            if (Bars.ClosePrices.Last(1) > Bars.OpenPrices.LastValue)
-            {
-
-                K = Math.Round((Bars.ClosePrices.Last(1) - Bars.OpenPrices.LastValue) / Symbol.PipSize, 2);
-
-            }
-            else if (Bars.OpenPrices.LastValue > Bars.ClosePrices.Last(1))
-            {
-
-                K = Math.Round((Bars.OpenPrices.LastValue - Bars.ClosePrices.Last(1)) / Symbol.PipSize, 2);
-
-            }
-
-            return (K > GAP);
-
-        }
-
-        /// <summary>
-        /// Controlla la fascia oraria per determinare se rientra in quella di pausa, utilizza dati double 
-        /// perchè la ctrader non permette di esporre dati time, da aggiornare non appena la ctrader lo permette
-        /// </summary>
-        /// <returns>Conferma la presenza di una fascia oraria in pausa</returns>
-        private bool _iAmInPause()
-        {
-
-            // -->> Poichè si utilizzano dati double per esporre i parametri dobbiamo utilizzare meccanismi per tradurre l'orario
-            string nowHour = (Server.Time.Hour < 10) ? string.Format("0{0}", Server.Time.Hour) : string.Format("{0}", Server.Time.Hour);
-            string nowMinute = (Server.Time.Minute < 10) ? string.Format("0{0}", Server.Time.Minute) : string.Format("{0}", Server.Time.Minute);
-
-            // --> Stabilisco il momento di controllo in formato double
-            double adesso = Convert.ToDouble(string.Format("{0},{1}", nowHour, nowMinute));
-
-            // --> Confronto elementare per rendere comprensibile la logica
-            if (PauseOver < PauseUnder && adesso >= PauseOver && adesso <= PauseUnder)
-            {
-
-                return true;
-
-            }
-            else if (PauseOver > PauseUnder && ((adesso >= PauseOver && adesso <= 23.59) || adesso <= PauseUnder))
-            {
-
-                return true;
-
-            }
-
-            return false;
-
-        }
-
-        /// <summary>
-        /// Controlla ed effettua la modifica in break-even se le condizioni le permettono
-        /// </summary>
-        private void _checkBreakEven()
-        {
-
-            // --> Se l'attivazione non è impostato vuol dire che non si vuole utilizzare questa funzione
-            if (BEfrom == 0)
-                return;
-
-            // --> Agisco solo sulle operazioni che abbiamo aperto con il cbot
-            var MyPositions = Positions.FindAll(MyLabel, Symbol.Name);
-
-            foreach (var position in MyPositions)
-            {
-
-                switch (position.TradeType)
-                {
-
-                    case TradeType.Buy:
-
-                        if ((Symbol.Bid >= (position.EntryPrice + (BEfrom * Symbol.PipSize))) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
-                        {
-
-                            ModifyPosition(position, (position.EntryPrice + (BEto * Symbol.PipSize)), position.TakeProfit);
-
-                        }
-
-                        break;
-
-                    case TradeType.Sell:
-
-                        if ((Symbol.Ask <= (position.EntryPrice - (BEfrom * Symbol.PipSize))) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
-                        {
-
-                            ModifyPosition(position, (position.EntryPrice - (BEto * Symbol.PipSize)), position.TakeProfit);
-
-                        }
-
-                        break;
-
-                }
-
-            }
 
         }
 
