@@ -172,7 +172,7 @@ namespace cAlgo
             YellowGreen
 
         }
-        
+
         /// <summary>
         /// Enumeratore per esporre nei parametri una scelta con menu a tendina
         /// </summary>
@@ -253,9 +253,9 @@ namespace cAlgo
             }
 
             /// <summary>
-            /// Filtra e rende disponibili le informazioni per la strategia monitorata
+            /// Filtra e rende disponibili le informazioni per la strategia monitorata. Eventualmente Chiude e gestisce le operazioni
             /// </summary>
-            public Information Update()
+            public Information Update(bool closeall = false, TradeType? filtertype = null)
             {
 
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
@@ -268,6 +268,12 @@ namespace cAlgo
 
                 foreach (Position position in Positions)
                 {
+
+                    if (closeall && (filtertype == null || position.TradeType == filtertype)) {
+
+                        position.Close();
+                        continue;
+                    }
 
                     Info.TotalNetProfit += position.NetProfit;
                     tmpVolume += position.VolumeInUnits;
@@ -308,8 +314,21 @@ namespace cAlgo
 
             }
 
+            /// <summary>
+            /// Chiude tutte le posizioni del monitor
+            /// </summary>
+            public void CloseAllPositions(TradeType? filtertype = null)
+            {
+
+                Update(true, filtertype);
+
+            }
+
         }
 
+        /// <summary>
+        /// Classe per gestire il dimensionamento delle size
+        /// </summary>
         public class MomenyManagement
         {
 
@@ -318,91 +337,64 @@ namespace cAlgo
             private double _fixedSize = 0;
             private double _pipToCalc = 30;
 
-            
+            // --> Riferimenti agli oggetti esterni utili per il calcolo
             private IAccount _account = null;
-            private CapitalTo _capitalType = CapitalTo.Balance;
             private Monitor _monitor = null;
 
+            /// <summary>
+            /// Il capitale da utilizzare per il calcolo
+            /// </summary>
+            public CapitalTo CapitalType = CapitalTo.Balance;
+
+            /// <summary>
+            /// La percentuale di rischio che si vuole investire
+            /// </summary>
             public double Percentage
             {
+                
+                get { return _percentage; }
 
-                get
-                {
 
-                    return _percentage;
-
-                }
-
-                set
-                {
-                    _percentage = (value > 0 && value <= 100) ? value : 0;
-
-                }
+                set { _percentage = (value > 0 && value <= 100) ? value : 0; }
 
             }
 
+            /// <summary>
+            /// La size fissa da utilizzare, bypassa tutti i parametri di calcolo
+            /// </summary>
             public double FixedSize
             {
-                get
-                {
+                
+                get { return _fixedSize; }
 
-                    return _fixedSize;
 
-                }
 
-                set
-                {
-
-                    _fixedSize = (value >= _minSize) ? value : 0;
-
-                }
+                set { _fixedSize = (value >= _minSize) ? value : 0; }
 
             }
 
+            /// <summary>
+            /// La distanza massima dall'ingresso con il quale calcolare le size
+            /// </summary>
             public double PipToCalc
             {
-                get
-                {
-
-                    return _pipToCalc;
-
-                }
-
-                set
-                {
-
-                    _pipToCalc = (value > 0) ? value : 30;
-
-                }
+                
+                get { return _pipToCalc; }
+                               
+                set { _pipToCalc = (value > 0) ? value : 30; }
 
             }
 
-            public CapitalTo CapitalType
-            {
-
-                get
-                {
-
-                    return _capitalType;
-
-                }
-
-                set
-                {
-
-                    _capitalType = value;
-
-                }
-
-            }
-
+            /// <summary>
+            /// Il capitale effettivo sul quale calcolare il rischio
+            /// </summary>
             public double Capital
             {
 
                 get
                 {
 
-                    switch (_capitalType)
+                    switch (CapitalType)
                     {
 
                         case CapitalTo.Equity:
@@ -419,13 +411,14 @@ namespace cAlgo
 
             }
 
+            // --> Costruttore
             public MomenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Monitor NewMonitor)
             {
 
                 _account = NewAccount;
-                _capitalType = NewCapitalTo;
                 _monitor = NewMonitor;
 
+                CapitalType = NewCapitalTo;
                 Percentage = NewPercentage;
                 FixedSize = NewFixedSize;
                 PipToCalc = NewPipToCalc;
@@ -439,7 +432,8 @@ namespace cAlgo
             {
 
                 // --> Hodeciso di usare una size fissa
-                if (FixedSize > 0) return FixedSize;
+                if (FixedSize > 0)
+                    return FixedSize;
 
                 // --> La percentuale di rischio in denaro
                 double moneyrisk = Capital / 100 * Percentage;
@@ -576,6 +570,13 @@ namespace cAlgo
 
         }
 
+        public static double RealSpread(this Symbol thisSymbol)
+        {
+
+            return Math.Round(thisSymbol.Spread / thisSymbol.PipSize, 2);
+
+        }
+
         #endregion
 
         #region Chart
@@ -672,7 +673,7 @@ namespace cAlgo.Robots
 
         #region Enums
 
-        
+
 
         #endregion
 
@@ -728,9 +729,6 @@ namespace cAlgo.Robots
         [Parameter("Pips To Calculate ( if no stoploss )", Group = "Money Management", DefaultValue = 9, MinValue = 0, Step = 0.1)]
         public double FakeSL { get; set; }
 
-        [Parameter("Minimum Lots", Group = "Money Management", DefaultValue = 0.01, MinValue = 0.01, Step = 0.01)]
-        public double MinLots { get; set; }
-
         [Parameter("Pause over this time", Group = "Filters", DefaultValue = 21.3, MinValue = 0, MaxValue = 23.59)]
         public double PauseOver { get; set; }
 
@@ -779,7 +777,7 @@ namespace cAlgo.Robots
             Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Positions);
 
             // --> Inizializzo il MoneyManagement
-            MomenyManagement1 = new Extensions.MomenyManagement( Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1 );
+            MomenyManagement1 = new Extensions.MomenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
             
         }
 
@@ -810,7 +808,7 @@ namespace cAlgo.Robots
             _checkBreakEven();
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
-            bool sharedCondition = (!openedInThisBar && !_iAmInGAP() && !_iAmInPause() && _getSpreadInformation() <= SpreadToTrigger && Positions.FindAll(MyLabel, Symbol.Name).Length < MaxTrades);
+            bool sharedCondition = (!openedInThisBar && !_iAmInGAP() && !_iAmInPause() && Monitor1.Symbol.RealSpread() <= SpreadToTrigger && Monitor1.Positions.Length < MaxTrades);
 
             // --> Controllo la presenza di trigger d'ingresso tenendo conto i filtri
             bool triggerBuy = _calculateLongTrigger(_calculateLongFilter(sharedCondition));
@@ -820,26 +818,26 @@ namespace cAlgo.Robots
             if (triggerBuy && triggerSell)
             {
 
-                Print("{0} {1} ERROR : trigger buy and sell !", MyLabel, Symbol.Name);
+                Print("{0} {1} ERROR : trigger buy and sell !", MyLabel, Monitor1.Symbol.Name);
                 return;
 
             }
 
             // --> Calcolo la size in base al money management stabilito
-            var volumeInUnits = Symbol.QuantityToVolumeInUnits(MomenyManagement1.GetLotSize());
+            double volumeInUnits = Monitor1.Symbol.QuantityToVolumeInUnits(MomenyManagement1.GetLotSize());
 
             // --> Se ho il segnale d'ingresso considerando i filtri allora procedo con l'ordine a mercato
             if (triggerBuy)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Buy, Symbol.Name, volumeInUnits, Slippage, Symbol.Ask, MyLabel, SL, TP);
+                ExecuteMarketRangeOrder(TradeType.Buy, Monitor1.Symbol.Name, volumeInUnits, Slippage, Monitor1.Symbol.Ask, MyLabel, SL, TP);
                 openedInThisBar = true;
 
             }
             else if (triggerSell)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Sell, Symbol.Name, volumeInUnits, Slippage, Symbol.Bid, MyLabel, SL, TP);
+                ExecuteMarketRangeOrder(TradeType.Sell, Monitor1.Symbol.Name, volumeInUnits, Slippage, Monitor1.Symbol.Bid, MyLabel, SL, TP);
                 openedInThisBar = true;
 
             }
@@ -985,48 +983,6 @@ namespace cAlgo.Robots
             }
 
             return false;
-
-        }
-
-        /// <summary>
-        /// Restituisce lo spread corrente
-        /// </summary>
-        private double _getSpreadInformation()
-        {
-
-            // --> Restituisco lo spread corrente
-            return Math.Round(Symbol.Spread / Symbol.PipSize, 2);
-
-        }
-
-        /// <summary>
-        /// Chiude le posizioni sulla coppia corrente aperte dal cbot
-        /// </summary>
-        private void _closePositions()
-        {
-
-            var MyPositions = Positions.FindAll(MyLabel, Symbol.Name);
-
-            foreach (var position in MyPositions)
-            {
-                ClosePosition(position);
-            }
-
-        }
-
-        /// <summary>
-        /// Chiude le posizioni sulla coppia corrente aperte dal cbot, filtrando solo alcune posizioni, short o long
-        /// </summary>
-        /// <param name="myTrade">Tipo di trade da chiudere long o short</param>
-        private void _closePositions(TradeType myTrade)
-        {
-
-            var MyPositions = Positions.FindAll(MyLabel, Symbol.Name, myTrade);
-
-            foreach (var position in MyPositions)
-            {
-                ClosePosition(position);
-            }
 
         }
 
