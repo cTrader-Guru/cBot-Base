@@ -257,7 +257,7 @@ namespace cAlgo
             /// Le posizioni filtrate
             /// </summary>
             public Position[] Positions { get; private set; }
-             
+
             /// <summary>
             /// Monitor per la raccolta d'informazioni inerenti la strategia in corso
             /// </summary>
@@ -302,6 +302,7 @@ namespace cAlgo
 
                         position.Close();
                         continue;
+
                     }
 
                     // --> Poi tocca al break even
@@ -402,14 +403,15 @@ namespace cAlgo
             private void _checkBreakEven(Position position, BreakEvenData breakevendata)
             {
 
-                if (breakevendata == null || breakevendata.Activation == 0) return;
+                if (breakevendata == null || breakevendata.Activation == 0)
+                    return;
 
                 switch (position.TradeType)
                 {
 
                     case TradeType.Buy:
 
-                        if ( (Symbol.Bid >= ( position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation ) ) ) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
+                        if ((Symbol.Bid >= (position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
                         {
 
                             position.ModifyStopLossPips(breakevendata.Pips);
@@ -420,7 +422,7 @@ namespace cAlgo
 
                     case TradeType.Sell:
 
-                        if ( ( Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits( breakevendata.Activation ) ) ) && ( position.StopLoss == null || position.StopLoss > position.EntryPrice) )
+                        if ((Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
                         {
 
                             position.ModifyStopLossPips(breakevendata.Pips);
@@ -517,6 +519,7 @@ namespace cAlgo
                     }
 
                 }
+
             }
 
 
@@ -883,7 +886,7 @@ namespace cAlgo.Robots
         Extensions.Monitor Monitor1;
         Extensions.MonenyManagement MonenyManagement1;
         Extensions.Monitor.BreakEvenData BreakEvenData1;
-        
+
         #endregion
 
         #region cBot Events
@@ -902,7 +905,7 @@ namespace cAlgo.Robots
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
-            Pause1 = new Extensions.Monitor.PauseTimes
+            Pause1 = new Extensions.Monitor.PauseTimes 
             {
 
                 Over = PauseOver,
@@ -917,7 +920,7 @@ namespace cAlgo.Robots
             MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
 
             // --> Inizializzo i dati per la gestione del breakeven
-            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
             {
 
                 Activation = BEfrom,
@@ -929,7 +932,7 @@ namespace cAlgo.Robots
             Positions.Opened += _onOpenPositions;
 
         }
-        
+
         /// <summary>
         /// Evento generato quando viene fermato il cBot
         /// </summary>
@@ -938,7 +941,7 @@ namespace cAlgo.Robots
 
             // --> Meglio eliminare l'handler, non dovrebbe servire ma non si sa mai
             Positions.Opened -= _onOpenPositions;
-            
+
         }
 
         /// <summary>
@@ -965,14 +968,14 @@ namespace cAlgo.Robots
         #endregion
 
         #region Private Methods
-        
+
         /// <summary>
         /// Operazioni da compiere ogni volta che apro una posizione con questa label
         /// </summary>
         private void _onOpenPositions(PositionOpenedEventArgs eventArgs)
         {
 
-            if( eventArgs.Position.Label == Monitor1.Label)
+            if (eventArgs.Position.Label == Monitor1.Label)
             {
 
                 Monitor1.OpenedInThisBar = true;
@@ -985,7 +988,7 @@ namespace cAlgo.Robots
         {
 
             // --> Aggiorno le informazioni necessarie per gestire la strategia
-            monitor.Update( _checkClosePositions(),breakevendata, null );
+            monitor.Update(_checkClosePositions(monitor), breakevendata, null);
 
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
@@ -1030,10 +1033,10 @@ namespace cAlgo.Robots
         /// <summary>
         /// Controlla e stabilisce se si devono chiudere tutte le posizioni
         /// </summary>
-        private bool _checkClosePositions()
+        private bool _checkClosePositions(Extensions.Monitor monitor)
         {
-
-            // --> Criteri da stabilire con la strategia
+            
+            // --> Criteri da stabilire con la strategia, monitor.Positions......
             return false;
 
         }
