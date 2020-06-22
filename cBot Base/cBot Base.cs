@@ -228,7 +228,18 @@ namespace cAlgo
             {
 
                 public double Activation = 0;
-                public double Pips = 0;
+                public double Distance = 0;
+
+            }
+
+            /// <summary>
+            /// Standard per la gestione del trailing
+            /// </summary>
+            public class TrailingData
+            {
+
+                public double Activation = 0;
+                public double Distance = 0;
 
             }
 
@@ -282,7 +293,7 @@ namespace cAlgo
             /// <summary>
             /// Filtra e rende disponibili le informazioni per la strategia monitorata. Eventualmente Chiude e gestisce le operazioni
             /// </summary>
-            public Information Update(bool closeall, BreakEvenData breakevendata, TradeType? filtertype = null)
+            public Information Update(bool closeall, BreakEvenData breakevendata, TrailingData trailingdata, TradeType? filtertype = null)
             {
 
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
@@ -307,6 +318,9 @@ namespace cAlgo
 
                     // --> Poi tocca al break even
                     _checkBreakEven(position, breakevendata);
+
+                    // --> Poi tocca al trailing
+                    _checkTrailing(position, trailingdata);
 
                     Info.TotalNetProfit += position.NetProfit;
                     tmpVolume += position.VolumeInUnits;
@@ -353,7 +367,7 @@ namespace cAlgo
             public void CloseAllPositions(TradeType? filtertype = null)
             {
 
-                Update(true, null, filtertype);
+                Update(true, null, null, filtertype);
 
             }
 
@@ -414,7 +428,18 @@ namespace cAlgo
                         if ((Symbol.Bid >= (position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
                         {
 
-                            position.ModifyStopLossPips(breakevendata.Pips);
+                            if (breakevendata.Distance == 0)
+                            {
+
+                                position.ModifyStopLossPrice(position.EntryPrice);
+
+                            }
+                            else
+                            {
+
+                                position.ModifyStopLossPips(breakevendata.Distance * -1);
+
+                            }
 
                         }
 
@@ -425,7 +450,63 @@ namespace cAlgo
                         if ((Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
                         {
 
-                            position.ModifyStopLossPips(breakevendata.Pips);
+                            if (breakevendata.Distance == 0)
+                            {
+
+                                position.ModifyStopLossPrice(position.EntryPrice);
+
+                            }
+                            else
+                            {
+
+                                position.ModifyStopLossPips(breakevendata.Distance * -1);
+
+                            }
+
+                        }
+
+                        break;
+
+                }
+
+            }
+
+
+            /// <summary>
+            /// Controlla ed effettua la modifica in trailing se le condizioni le permettono
+            /// </summary>
+            private void _checkTrailing(Position position, TrailingData trailingdata)
+            {
+
+                if (trailingdata == null || trailingdata.Activation == 0 || trailingdata.Distance == 0)
+                    return;
+
+                double trailing = 0;
+
+                switch (position.TradeType)
+                {
+
+                    case TradeType.Buy:
+
+                        trailing = Math.Round(Symbol.Bid - Symbol.PipsToDigits(trailingdata.Distance), Symbol.Digits);
+
+                        if ((Symbol.Bid >= (position.EntryPrice + Symbol.PipsToDigits(trailingdata.Activation))) && (position.StopLoss == null || position.StopLoss < trailing))
+                        {
+
+                            position.ModifyStopLossPrice(trailing);
+
+                        }
+
+                        break;
+
+                    case TradeType.Sell:
+
+                        trailing = Math.Round(Symbol.Ask + Symbol.PipsToDigits(trailingdata.Distance), Symbol.Digits);
+
+                        if ((Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits(trailingdata.Activation))) && (position.StopLoss == null || position.StopLoss > trailing))
+                        {
+
+                            position.ModifyStopLossPrice(trailing);
 
                         }
 
@@ -469,6 +550,12 @@ namespace cAlgo
                 set { _percentage = (value > 0 && value <= 100) ? value : 0; }
             }
 
+            public Monitor Monitor
+            {
+
+                get { return _monitor; }
+
+            }
 
             /// <summary>
             /// La size fissa da utilizzare, bypassa tutti i parametri di calcolo
@@ -492,7 +579,7 @@ namespace cAlgo
 
                 get { return _pipToCalc; }
 
-                set { _pipToCalc = (value > 0) ? value : 30; }
+                set { _pipToCalc = (value > 0) ? value : 100; }
             }
 
 
@@ -519,8 +606,8 @@ namespace cAlgo
                     }
 
                 }
-
             }
+
 
 
             // --> Costruttore
@@ -807,7 +894,14 @@ namespace cAlgo.Robots
 
         #region Enums
 
+        public enum MyTradeType
+        {
 
+            Disabled,
+            Buy,
+            Sell
+
+        }
 
         #endregion
 
@@ -821,7 +915,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.6";
+        public const string VERSION = "1.0.7";
 
         #endregion
 
@@ -833,23 +927,26 @@ namespace cAlgo.Robots
         [Parameter("Label ( Magic Name )", Group = "Identity", DefaultValue = NAME)]
         public string MyLabel { get; set; }
 
-        [Parameter("Stop Loss (pips)", Group = "Money Management", DefaultValue = 5, MinValue = 0, Step = 0.1)]
+        [Parameter("Stop Loss (pips)", Group = "Strategy", DefaultValue = 5, MinValue = 0, Step = 0.1)]
         public double SL { get; set; }
 
-        [Parameter("Take Profit (pips)", Group = "Money Management", DefaultValue = 10, MinValue = 0, Step = 0.1)]
+        [Parameter("Take Profit (pips)", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
         public double TP { get; set; }
 
-        [Parameter("Break Even From (pips)", Group = "Money Management", DefaultValue = 5, MinValue = 0, Step = 0.1)]
-        public double BEfrom { get; set; }
+        [Parameter("Slippage (pips)", Group = "Strategy", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
+        public double SLIPPAGE { get; set; }
 
-        [Parameter("Break Even To (pips)", Group = "Money Management", DefaultValue = 1.5, MinValue = 1, Step = 0.1)]
-        public double BEto { get; set; }
+        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 5, MinValue = 0, Step = 0.1)]
+        public double BreakEvenActivation { get; set; }
 
-        [Parameter("Max Spread allowed", Group = "Money Management", DefaultValue = 1.5, MinValue = 0.1, Step = 0.1)]
-        public double SpreadToTrigger { get; set; }
+        [Parameter("Distance (pips, move Stop Loss)", Group = "Break Even", DefaultValue = 1.5, Step = 0.1)]
+        public double BreakEvenDistance { get; set; }
 
-        [Parameter("Slippage (pips)", Group = "Money Management", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
-        public double Slippage { get; set; }
+        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 25, MinValue = 0, Step = 0.1)]
+        public double TrailingActivation { get; set; }
+
+        [Parameter("Distance (pips, move Stop Loss)", Group = "Trailing", DefaultValue = 15, MinValue = 1, Step = 0.1)]
+        public double TrailingDistance { get; set; }
 
         [Parameter("Fixed Lots", Group = "Money Management", DefaultValue = 0, MinValue = 0, Step = 0.01)]
         public double FixedLots { get; set; }
@@ -860,8 +957,11 @@ namespace cAlgo.Robots
         [Parameter("% Risk", Group = "Money Management", DefaultValue = 1, MinValue = 0.1, Step = 0.1)]
         public double MyRisk { get; set; }
 
-        [Parameter("Pips To Calculate ( if no stoploss )", Group = "Money Management", DefaultValue = 9, MinValue = 0, Step = 0.1)]
+        [Parameter("Pips To Calculate ( if no stoploss, empty = '100' )", Group = "Money Management", DefaultValue = 9, MinValue = 0, Step = 0.1)]
         public double FakeSL { get; set; }
+
+        [Parameter("Max Spread allowed", Group = "Filters", DefaultValue = 1.5, MinValue = 0.1, Step = 0.1)]
+        public double SpreadToTrigger { get; set; }
 
         [Parameter("Pause over this time", Group = "Filters", DefaultValue = 21.3, MinValue = 0, MaxValue = 23.59)]
         public double PauseOver { get; set; }
@@ -875,7 +975,10 @@ namespace cAlgo.Robots
         [Parameter("Max Number of Trades", Group = "Filters", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MaxTrades { get; set; }
 
-        [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral, MinValue = 1, Step = 1)]
+        [Parameter("Open Position On Start", Group = "Debug", DefaultValue = MyTradeType.Disabled)]
+        public MyTradeType OpenOnStart { get; set; }
+
+        [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral)]
         public Extensions.ColorNameEnum TextColor { get; set; }
 
         #endregion
@@ -886,6 +989,7 @@ namespace cAlgo.Robots
         Extensions.Monitor Monitor1;
         Extensions.MonenyManagement MonenyManagement1;
         Extensions.Monitor.BreakEvenData BreakEvenData1;
+        Extensions.Monitor.TrailingData TrailingData1;
 
         #endregion
 
@@ -905,7 +1009,7 @@ namespace cAlgo.Robots
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
-            Pause1 = new Extensions.Monitor.PauseTimes 
+            Pause1 = new Extensions.Monitor.PauseTimes
             {
 
                 Over = PauseOver,
@@ -920,16 +1024,28 @@ namespace cAlgo.Robots
             MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
 
             // --> Inizializzo i dati per la gestione del breakeven
-            BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
             {
 
-                Activation = BEfrom,
-                Pips = BEto
+                Activation = BreakEvenActivation,
+                Distance = BreakEvenDistance
+
+            };
+
+            // --> Inizializzo i dati per la gestione del Trailing
+            TrailingData1 = new Extensions.Monitor.TrailingData
+            {
+
+                Activation = TrailingActivation,
+                Distance = TrailingDistance
 
             };
 
             // --> Osservo le aperture per operazioni comuni
             Positions.Opened += _onOpenPositions;
+
+            // --> Effettuo un test di apertura per verificare il funzionamento del sistema
+            if (OpenOnStart != MyTradeType.Disabled) _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1);
 
         }
 
@@ -961,7 +1077,7 @@ namespace cAlgo.Robots
         protected override void OnTick()
         {
 
-            _loop(Monitor1, MonenyManagement1, BreakEvenData1);
+            _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
 
         }
 
@@ -984,11 +1100,11 @@ namespace cAlgo.Robots
 
         }
 
-        private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata)
+        private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
 
             // --> Aggiorno le informazioni necessarie per gestire la strategia
-            monitor.Update(_checkClosePositions(monitor), breakevendata, null);
+            monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, null);
 
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
@@ -1014,13 +1130,13 @@ namespace cAlgo.Robots
             if (triggerBuy)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, Slippage, monitor.Symbol.Ask, monitor.Label, SL, TP);
+                ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Ask, monitor.Label, SL, TP);
 
             }
             else if (triggerSell)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Sell, monitor.Symbol.Name, volumeInUnits, Slippage, monitor.Symbol.Bid, monitor.Label, SL, TP);
+                ExecuteMarketRangeOrder(TradeType.Sell, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Bid, monitor.Label, SL, TP);
 
             }
 
@@ -1035,7 +1151,7 @@ namespace cAlgo.Robots
         /// </summary>
         private bool _checkClosePositions(Extensions.Monitor monitor)
         {
-            
+
             // --> Criteri da stabilire con la strategia, monitor.Positions......
             return false;
 
@@ -1106,6 +1222,29 @@ namespace cAlgo.Robots
 
             // --> Criteri da stabilire
             return false;
+
+        }
+
+        private void _test(TradeType trigger, Extensions.MonenyManagement moneymanagement)
+        {
+
+            // --> Calcolo la size in base al money management stabilito
+            double volumeInUnits = moneymanagement.Monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+            switch (trigger)
+            {
+
+                case TradeType.Buy:
+
+                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Monitor.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Monitor.Symbol.Ask, moneymanagement.Monitor.Label, SL, TP);
+                    break;
+
+                case TradeType.Sell:
+
+                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Monitor.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Monitor.Symbol.Bid, moneymanagement.Monitor.Label, SL, TP);
+                    break;
+
+            }
 
         }
 
