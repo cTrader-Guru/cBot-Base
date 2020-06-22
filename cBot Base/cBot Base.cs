@@ -213,6 +213,9 @@ namespace cAlgo
 
             }
 
+            /// <summary>
+            /// Standard per l'interpretazione dell'orario in double
+            /// </summary>
             public class PauseTimes
             {
 
@@ -243,6 +246,9 @@ namespace cAlgo
 
             }
 
+            /// <summary>
+            /// Memorizza lo stato di apertura di una operazione nella Bar corrente
+            /// </summary>
             public bool OpenedInThisBar = false;
 
             /// <summary>
@@ -255,8 +261,14 @@ namespace cAlgo
             /// </summary>
             public readonly Symbol Symbol;
 
+            /// <summary>
+            /// Le Bars con il quale la strategia si muove ed elabora le sue condizioni
+            /// </summary>
             public readonly Bars Bars;
 
+            /// <summary>
+            /// Il riferimento temporale della pausa
+            /// </summary>
             public readonly PauseTimes Pause;
 
             /// <summary>
@@ -265,16 +277,13 @@ namespace cAlgo
             public Information Info { get; private set; }
 
             /// <summary>
-            /// Le posizioni filtrate
+            /// Le posizioni filtrate in base al simbolo e alla label
             /// </summary>
             public Position[] Positions { get; private set; }
 
             /// <summary>
             /// Monitor per la raccolta d'informazioni inerenti la strategia in corso
             /// </summary>
-            /// <param name="NewLabel">Valore univoco che identifica la strategia</param>
-            /// <param name="NewSymbolName">Il Simbolo che si dersidera monitorare</param>
-            /// <param name="AllPositions">Le posizioni da filtrare con il quale verranno raccolte le informazioni</param>
             public Monitor(string NewLabel, Symbol NewSymbol, Bars NewBars, Positions AllPositions, PauseTimes NewPause)
             {
 
@@ -371,6 +380,9 @@ namespace cAlgo
 
             }
 
+            /// <summary>
+            /// Stabilisce se si è in GAP passando una certa distanza da misurare
+            /// </summary>
             public bool InGAP(double distance)
             {
 
@@ -531,7 +543,7 @@ namespace cAlgo
 
             // --> Riferimenti agli oggetti esterni utili per il calcolo
             private IAccount _account = null;
-            private Monitor _monitor = null;
+            public readonly Symbol Symbol;
 
             /// <summary>
             /// Il capitale da utilizzare per il calcolo
@@ -548,13 +560,6 @@ namespace cAlgo
 
 
                 set { _percentage = (value > 0 && value <= 100) ? value : 0; }
-            }
-
-            public Monitor Monitor
-            {
-
-                get { return _monitor; }
-
             }
 
             /// <summary>
@@ -611,11 +616,12 @@ namespace cAlgo
 
 
             // --> Costruttore
-            public MonenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Monitor NewMonitor)
+            public MonenyManagement(IAccount NewAccount, CapitalTo NewCapitalTo, double NewPercentage, double NewFixedSize, double NewPipToCalc, Symbol NewSymbol)
             {
 
                 _account = NewAccount;
-                _monitor = NewMonitor;
+
+                Symbol = NewSymbol;
 
                 CapitalType = NewCapitalTo;
                 Percentage = NewPercentage;
@@ -638,11 +644,11 @@ namespace cAlgo
                 double moneyrisk = Capital / 100 * Percentage;
 
                 // --> Traduco lo stoploss o il suo riferimento in double
-                double sl_double = PipToCalc * _monitor.Symbol.PipSize;
+                double sl_double = PipToCalc * Symbol.PipSize;
 
-                // --> In formato 0.01 = microlotto double lots = Math.Round(_monitor.Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
-                // --> In formato volume 1K = 1000 Math.Round((moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
-                double lots = Math.Round(_monitor.Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * _monitor.Symbol.TickValue) / _monitor.Symbol.TickSize)), 2);
+                // --> In formato 0.01 = microlotto double lots = Math.Round(Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
+                // --> In formato volume 1K = 1000 Math.Round((moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
+                double lots = Math.Round(Symbol.VolumeInUnitsToQuantity(moneyrisk / ((sl_double * Symbol.TickValue) / Symbol.TickSize)), 2);
 
                 if (lots < _minSize)
                     return _minSize;
@@ -915,69 +921,136 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.7";
+        public const string VERSION = "1.0.8";
 
         #endregion
 
         #region Params
 
+        /// <summary>
+        /// Riferimenti del prodotto
+        /// </summary>
         [Parameter(NAME + " " + VERSION, Group = "Identity", DefaultValue = "https://ctrader.guru/product/cbot-base/")]
         public string ProductInfo { get; set; }
 
+        /// <summary>
+        /// Label che contraddistingue una operazione
+        /// </summary>
         [Parameter("Label ( Magic Name )", Group = "Identity", DefaultValue = NAME)]
         public string MyLabel { get; set; }
 
-        [Parameter("Stop Loss (pips)", Group = "Strategy", DefaultValue = 5, MinValue = 0, Step = 0.1)]
+        /// <summary>
+        /// Lo Stop Loss che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Stop Loss (pips)", Group = "Strategy", DefaultValue = 100, MinValue = 0, Step = 0.1)]
         public double SL { get; set; }
 
-        [Parameter("Take Profit (pips)", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
+        /// <summary>
+        /// Il Take Profit che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Take Profit (pips)", Group = "Strategy", DefaultValue = 100, MinValue = 0, Step = 0.1)]
         public double TP { get; set; }
 
+        /// <summary>
+        /// Al raggiungimento di questo netprofit chiude tutto
+        /// </summary>
+        [Parameter("Money Target (zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double MoneyTarget { get; set; }
+
+        /// <summary>
+        /// Il broker dovrebbe considerare questo valore come massimo slittamento
+        /// </summary>
         [Parameter("Slippage (pips)", Group = "Strategy", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
         public double SLIPPAGE { get; set; }
 
-        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 5, MinValue = 0, Step = 0.1)]
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
+        /// </summary>
+        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 0, Step = 0.1)]
         public double BreakEvenActivation { get; set; }
 
+        /// <summary>
+        /// Il numero di pips da spostare in caso di attivazione del Break Even, può essere inferiore a zero
+        /// </summary>
         [Parameter("Distance (pips, move Stop Loss)", Group = "Break Even", DefaultValue = 1.5, Step = 0.1)]
         public double BreakEvenDistance { get; set; }
 
-        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 25, MinValue = 0, Step = 0.1)]
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Trailing, se pari a zero disabilita il controllo
+        /// </summary>
+        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 0, Step = 0.1)]
         public double TrailingActivation { get; set; }
 
-        [Parameter("Distance (pips, move Stop Loss)", Group = "Trailing", DefaultValue = 15, MinValue = 1, Step = 0.1)]
+        /// <summary>
+        /// Il numero di pips che segna la distanza del Trailing, se pari a zero inibisce il Trailing
+        /// </summary>
+        [Parameter("Distance (pips, move Stop Loss)", Group = "Trailing", DefaultValue = 30, MinValue = 1, Step = 0.1)]
         public double TrailingDistance { get; set; }
 
+        /// <summary>
+        /// Valore esclusivo che bypassa il calcolo del rischio, se pari a zero non prende in considerazione il valore manuale
+        /// </summary>
         [Parameter("Fixed Lots", Group = "Money Management", DefaultValue = 0, MinValue = 0, Step = 0.01)]
         public double FixedLots { get; set; }
 
+        /// <summary>
+        /// Il capitale da prendere in considerazione per il calcolo del rischio
+        /// </summary>
         [Parameter("Capital", Group = "Money Management", DefaultValue = Extensions.CapitalTo.Balance)]
         public Extensions.CapitalTo MyCapital { get; set; }
 
+        /// <summary>
+        /// La percentuale di rischio da calcolare per la size in lotti
+        /// </summary>
         [Parameter("% Risk", Group = "Money Management", DefaultValue = 1, MinValue = 0.1, Step = 0.1)]
         public double MyRisk { get; set; }
 
-        [Parameter("Pips To Calculate ( if no stoploss, empty = '100' )", Group = "Money Management", DefaultValue = 9, MinValue = 0, Step = 0.1)]
+        /// <summary>
+        /// Il numero di pips da prendere in considerazione se lo Stop Loss è pari a zero per calcolare la size, se
+        /// anche questo valore sarà zero allora verrà impostato 100 come valore nominale
+        /// </summary>
+        [Parameter("Pips To Calculate ( if no stoploss, empty = '100' )", Group = "Money Management", DefaultValue = 100, MinValue = 0, Step = 0.1)]
         public double FakeSL { get; set; }
 
+        /// <summary>
+        /// Massimo spread consentito per le operazioni
+        /// </summary>
         [Parameter("Max Spread allowed", Group = "Filters", DefaultValue = 1.5, MinValue = 0.1, Step = 0.1)]
         public double SpreadToTrigger { get; set; }
 
+        /// <summary>
+        /// Livello temporale espresso in double oltre il quale il cbot entra in pausa
+        /// </summary>
         [Parameter("Pause over this time", Group = "Filters", DefaultValue = 21.3, MinValue = 0, MaxValue = 23.59)]
         public double PauseOver { get; set; }
 
+        /// <summary>
+        /// Livello temporale espresso in double al di sotto il cbot entra in pausa
+        /// </summary>
         [Parameter("Pause under this time", Group = "Filters", DefaultValue = 3, MinValue = 0, MaxValue = 23.59)]
         public double PauseUnder { get; set; }
 
+        /// <summary>
+        /// La distanza massima (GAP) in pips che può intercorrere tra una chiusura e una apertura (cambio candela)
+        /// </summary>
         [Parameter("Max GAP Allowed (pips)", Group = "Filters", DefaultValue = 1, MinValue = 0, Step = 0.01)]
         public double GAP { get; set; }
 
+        /// <summary>
+        /// Il numero massimo di trades che il cbot deve aprire
+        /// </summary>
         [Parameter("Max Number of Trades", Group = "Filters", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MaxTrades { get; set; }
 
+        /// <summary>
+        /// Opzione per il debug che apre una posizione di test (label TEST)
+        /// </summary>
         [Parameter("Open Position On Start", Group = "Debug", DefaultValue = MyTradeType.Disabled)]
         public MyTradeType OpenOnStart { get; set; }
 
+        /// <summary>
+        /// Il colore del testo per eventuali messaggi da stampare sul chart
+        /// </summary>
         [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral)]
         public Extensions.ColorNameEnum TextColor { get; set; }
 
@@ -1021,7 +1094,7 @@ namespace cAlgo.Robots
             Monitor1 = new Extensions.Monitor(MyLabel, Symbol, Bars, Positions, Pause1);
 
             // --> Inizializzo il MoneyManagement
-            MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Monitor1);
+            MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Symbol);
 
             // --> Inizializzo i dati per la gestione del breakeven
             BreakEvenData1 = new Extensions.Monitor.BreakEvenData
@@ -1091,7 +1164,7 @@ namespace cAlgo.Robots
         private void _onOpenPositions(PositionOpenedEventArgs eventArgs)
         {
 
-            if (eventArgs.Position.Label == Monitor1.Label)
+            if (eventArgs.Position.SymbolName == Monitor1.Symbol.Name && eventArgs.Position.Label == Monitor1.Label)
             {
 
                 Monitor1.OpenedInThisBar = true;
@@ -1153,7 +1226,7 @@ namespace cAlgo.Robots
         {
 
             // --> Criteri da stabilire con la strategia, monitor.Positions......
-            return false;
+            return (MoneyTarget > 0 && monitor.Info.TotalNetProfit >= MoneyTarget);
 
         }
 
@@ -1229,19 +1302,19 @@ namespace cAlgo.Robots
         {
 
             // --> Calcolo la size in base al money management stabilito
-            double volumeInUnits = moneymanagement.Monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+            double volumeInUnits = moneymanagement.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
 
             switch (trigger)
             {
 
                 case TradeType.Buy:
 
-                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Monitor.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Monitor.Symbol.Ask, moneymanagement.Monitor.Label, SL, TP);
+                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, "TEST", SL, TP);
                     break;
 
                 case TradeType.Sell:
 
-                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Monitor.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Monitor.Symbol.Bid, moneymanagement.Monitor.Label, SL, TP);
+                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Bid, "TEST", SL, TP);
                     break;
 
             }
