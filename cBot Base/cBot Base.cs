@@ -921,7 +921,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.8";
+        public const string VERSION = "1.0.9";
 
         #endregion
 
@@ -1118,7 +1118,7 @@ namespace cAlgo.Robots
             Positions.Opened += _onOpenPositions;
 
             // --> Effettuo un test di apertura per verificare il funzionamento del sistema
-            if (OpenOnStart != MyTradeType.Disabled) _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1);
+            if (OpenOnStart != MyTradeType.Disabled) _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1, MyLabel);
 
         }
 
@@ -1142,6 +1142,9 @@ namespace cAlgo.Robots
             // --> Resetto il flag del controllo candela
             Monitor1.OpenedInThisBar = false;
 
+            // --> Meglio iniziare con un trigger che tenga conto della chiusura della candela
+            _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+
         }
 
         /// <summary>
@@ -1150,7 +1153,8 @@ namespace cAlgo.Robots
         protected override void OnTick()
         {
 
-            _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+            // --> Aggiorno i dati e gestisco il mantenimento a ogni tick
+            Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, null);
 
         }
 
@@ -1298,7 +1302,7 @@ namespace cAlgo.Robots
 
         }
 
-        private void _test(TradeType trigger, Extensions.MonenyManagement moneymanagement)
+        private void _test(TradeType trigger, Extensions.MonenyManagement moneymanagement, string label = "TEST")
         {
 
             // --> Calcolo la size in base al money management stabilito
@@ -1309,12 +1313,12 @@ namespace cAlgo.Robots
 
                 case TradeType.Buy:
 
-                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, "TEST", SL, TP);
+                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, label, SL, TP);
                     break;
 
                 case TradeType.Sell:
 
-                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Bid, "TEST", SL, TP);
+                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Bid, label, SL, TP);
                     break;
 
             }
