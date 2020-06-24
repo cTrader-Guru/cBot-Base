@@ -921,7 +921,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.0.9";
+        public const string VERSION = "1.1.0";
 
         #endregion
 
@@ -938,6 +938,12 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Label ( Magic Name )", Group = "Identity", DefaultValue = NAME)]
         public string MyLabel { get; set; }
+
+        /// <summary>
+        /// Informazioni sul default preset
+        /// </summary>
+        [Parameter("Preset information", Group = "Identity", DefaultValue = "Standard preset without any strategy")]
+        public string PresetInfo { get; set; }
 
         /// <summary>
         /// Lo Stop Loss che verrà utilizzato per ogni operazione
@@ -1082,7 +1088,7 @@ namespace cAlgo.Robots
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
-            Pause1 = new Extensions.Monitor.PauseTimes
+            Pause1 = new Extensions.Monitor.PauseTimes 
             {
 
                 Over = PauseOver,
@@ -1097,7 +1103,7 @@ namespace cAlgo.Robots
             MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Symbol);
 
             // --> Inizializzo i dati per la gestione del breakeven
-            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
             {
 
                 Activation = BreakEvenActivation,
@@ -1106,7 +1112,7 @@ namespace cAlgo.Robots
             };
 
             // --> Inizializzo i dati per la gestione del Trailing
-            TrailingData1 = new Extensions.Monitor.TrailingData
+            TrailingData1 = new Extensions.Monitor.TrailingData 
             {
 
                 Activation = TrailingActivation,
@@ -1118,7 +1124,8 @@ namespace cAlgo.Robots
             Positions.Opened += _onOpenPositions;
 
             // --> Effettuo un test di apertura per verificare il funzionamento del sistema
-            if (OpenOnStart != MyTradeType.Disabled) _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1, MyLabel);
+            if (OpenOnStart != MyTradeType.Disabled)
+                _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1, MyLabel);
 
         }
 
