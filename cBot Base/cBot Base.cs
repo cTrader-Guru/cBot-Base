@@ -230,6 +230,8 @@ namespace cAlgo
             public class BreakEvenData
             {
 
+                // --> In caso di operazioni multiple sarebbe bene evitare la gestione di tutte
+                public bool OnlyFirst = false;
                 public double Activation = 0;
                 public double Distance = 0;
 
@@ -241,6 +243,8 @@ namespace cAlgo
             public class TrailingData
             {
 
+                // --> In caso di operazioni multiple sarebbe bene evitare la gestione di tutte
+                public bool OnlyFirst = false;
                 public double Activation = 0;
                 public double Distance = 0;
 
@@ -326,10 +330,10 @@ namespace cAlgo
                     }
 
                     // --> Poi tocca al break even
-                    _checkBreakEven(position, breakevendata);
+                    if(!breakevendata.OnlyFirst || Positions.Length == 1) _checkBreakEven(position, breakevendata);
 
                     // --> Poi tocca al trailing
-                    _checkTrailing(position, trailingdata);
+                    if(!trailingdata.OnlyFirst || Positions.Length == 1) _checkTrailing(position, trailingdata);
 
                     Info.TotalNetProfit += position.NetProfit;
                     tmpVolume += position.VolumeInUnits;
@@ -909,6 +913,15 @@ namespace cAlgo.Robots
 
         }
 
+        public enum ProtectionType
+        {
+
+            Disabled,
+            OnlyFirst,
+            All
+
+        }
+
         #endregion
 
         #region Identity
@@ -921,7 +934,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.0";
+        public const string VERSION = "1.1.1";
 
         #endregion
 
@@ -970,9 +983,15 @@ namespace cAlgo.Robots
         public double SLIPPAGE { get; set; }
 
         /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
+        /// </summary>
+        [Parameter("Mode", Group = "Break Even", DefaultValue = ProtectionType.OnlyFirst)]
+        public ProtectionType BreakEvenProtectionType { get; set; }
+
+        /// <summary>
         /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
         /// </summary>
-        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 0, Step = 0.1)]
+        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 1, Step = 0.1)]
         public double BreakEvenActivation { get; set; }
 
         /// <summary>
@@ -982,9 +1001,15 @@ namespace cAlgo.Robots
         public double BreakEvenDistance { get; set; }
 
         /// <summary>
+        /// L'attivazione per il moniotraggio del Trailing per uno o per tutti i trades
+        /// </summary>
+        [Parameter("Mode", Group = "Trailing", DefaultValue = ProtectionType.OnlyFirst)]
+        public ProtectionType TrailingProtectionType { get; set; }
+
+        /// <summary>
         /// L'attivazione per il moniotraggio del Trailing, se pari a zero disabilita il controllo
         /// </summary>
-        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 0, Step = 0.1)]
+        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 1, Step = 0.1)]
         public double TrailingActivation { get; set; }
 
         /// <summary>
@@ -1106,7 +1131,8 @@ namespace cAlgo.Robots
             BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
             {
 
-                Activation = BreakEvenActivation,
+                OnlyFirst = BreakEvenProtectionType == ProtectionType.OnlyFirst,
+                Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
                 Distance = BreakEvenDistance
 
             };
@@ -1115,7 +1141,8 @@ namespace cAlgo.Robots
             TrailingData1 = new Extensions.Monitor.TrailingData 
             {
 
-                Activation = TrailingActivation,
+                OnlyFirst = TrailingProtectionType == ProtectionType.OnlyFirst,
+                Activation = (TrailingProtectionType != ProtectionType.Disabled) ? TrailingActivation : 0,
                 Distance = TrailingDistance
 
             };
