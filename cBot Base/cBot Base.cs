@@ -232,6 +232,7 @@ namespace cAlgo
 
                 // --> In caso di operazioni multiple sarebbe bene evitare la gestione di tutte
                 public bool OnlyFirst = false;
+                public bool Negative = false;
                 public double Activation = 0;
                 public double Distance = 0;
 
@@ -435,7 +436,7 @@ namespace cAlgo
 
                 if (breakevendata == null || breakevendata.Activation == 0)
                     return;
-
+                
                 switch (position.TradeType)
                 {
 
@@ -458,6 +459,23 @@ namespace cAlgo
                             }
 
                         }
+                        else if( breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
+                        {
+
+                            if (breakevendata.Distance == 0)
+                            {
+
+                                position.ModifyTakeProfitPips(position.EntryPrice);
+
+                            }
+                            else
+                            {
+
+                                position.ModifyTakeProfitPips(breakevendata.Distance);
+
+                            }
+
+                        }
 
                         break;
 
@@ -476,6 +494,23 @@ namespace cAlgo
                             {
 
                                 position.ModifyStopLossPips(breakevendata.Distance * -1);
+
+                            }
+
+                        }
+                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit < position.EntryPrice))
+                        {
+
+                            if (breakevendata.Distance == 0)
+                            {
+
+                                position.ModifyTakeProfitPips(position.EntryPrice);
+
+                            }
+                            else
+                            {
+
+                                position.ModifyTakeProfitPips(breakevendata.Distance);
 
                             }
 
@@ -934,7 +969,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.1";
+        public const string VERSION = "1.1.2";
 
         #endregion
 
@@ -987,6 +1022,12 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Mode", Group = "Break Even", DefaultValue = ProtectionType.OnlyFirst)]
         public ProtectionType BreakEvenProtectionType { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
+        /// </summary>
+        [Parameter("Negative ?", Group = "Break Even", DefaultValue = false)]
+        public bool BreakEvenNegative { get; set; }
 
         /// <summary>
         /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
@@ -1132,6 +1173,7 @@ namespace cAlgo.Robots
             {
 
                 OnlyFirst = BreakEvenProtectionType == ProtectionType.OnlyFirst,
+                Negative = BreakEvenNegative,
                 Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
                 Distance = BreakEvenDistance
 
