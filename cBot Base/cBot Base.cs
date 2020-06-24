@@ -1024,9 +1024,9 @@ namespace cAlgo.Robots
         public ProtectionType BreakEvenProtectionType { get; set; }
 
         /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
+        /// L'attivazione per il moniotraggio del Break Even per la logica negativa
         /// </summary>
-        [Parameter("Negative ?", Group = "Break Even", DefaultValue = false)]
+        [Parameter("Negative ?", Group = "Break Even", DefaultValue = true)]
         public bool BreakEvenNegative { get; set; }
 
         /// <summary>
