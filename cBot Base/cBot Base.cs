@@ -957,6 +957,14 @@ namespace cAlgo.Robots
 
         }
 
+        public enum LoopType
+        {
+
+            OnBar,
+            OnTick
+
+        }
+
         #endregion
 
         #region Identity
@@ -969,7 +977,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.2";
+        public const string VERSION = "1.1.3";
 
         #endregion
 
@@ -992,6 +1000,9 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Preset information", Group = "Identity", DefaultValue = "Standard preset without any strategy")]
         public string PresetInfo { get; set; }
+
+        [Parameter("Loop", Group = "Strategy", DefaultValue = LoopType.OnBar)]
+        public LoopType MyLoopType { get; set; }
 
         /// <summary>
         /// Lo Stop Loss che verrà utilizzato per ogni operazione
@@ -1218,8 +1229,8 @@ namespace cAlgo.Robots
             // --> Resetto il flag del controllo candela
             Monitor1.OpenedInThisBar = false;
 
-            // --> Meglio iniziare con un trigger che tenga conto della chiusura della candela
-            _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+            // --> Eseguo il loop solo se desidero farlo ad ogni cambio candela
+            if (MyLoopType == LoopType.OnBar) _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
 
         }
 
@@ -1229,8 +1240,8 @@ namespace cAlgo.Robots
         protected override void OnTick()
         {
 
-            // --> Aggiorno i dati e gestisco il mantenimento a ogni tick
-            Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, null);
+            // --> Eseguo il loop solo se desidero farlo ad ogni Tick
+            if (MyLoopType == LoopType.OnTick) _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
 
         }
 
