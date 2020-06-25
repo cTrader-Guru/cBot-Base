@@ -977,7 +977,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.3";
+        public const string VERSION = "1.1.4";
 
         #endregion
 
@@ -1124,6 +1124,12 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Max Number of Trades", Group = "Filters", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MaxTrades { get; set; }
+
+        /// <summary>
+        /// Offre la possibilità di limitare solo strategie in un senso
+        /// </summary>
+        [Parameter("Hedging Opportunity ?", Group = "Filters", DefaultValue = false)]
+        public bool HedgingOpportunity { get; set; }
 
         /// <summary>
         /// Opzione per il debug che apre una posizione di test (label TEST)
@@ -1333,6 +1339,9 @@ namespace cAlgo.Robots
             if (!condition)
                 return false;
 
+            // --> In caso di multi-operations non posso andare in hedging, a patto che non venga scelto esplicitamente
+            if (!HedgingOpportunity && Monitor1.Info.SellPositions > 0) return false;
+
             // --> Criteri da stabilire
             return true;
 
@@ -1349,6 +1358,9 @@ namespace cAlgo.Robots
             // --> La condizione primaria deve essere presente altrimenti non serve continuare
             if (!condition)
                 return false;
+
+            // --> In caso di multi-operations non posso andare in hedging, a patto che non venga scelto esplicitamente
+            if (!HedgingOpportunity && Monitor1.Info.BuyPositions > 0) return false;
 
             // --> Criteri da stabilire
             return true;
