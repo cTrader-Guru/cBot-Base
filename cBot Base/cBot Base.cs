@@ -987,7 +987,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.7";
+        public const string VERSION = "1.1.8";
 
         #endregion
 
@@ -1274,7 +1274,19 @@ namespace cAlgo.Robots
 
             // --> Eseguo il loop solo se desidero farlo ad ogni Tick
             if (MyLoopType == LoopType.OnTick)
+            {
+
                 _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+
+            }
+            else
+            {
+
+                // --> Devo comunque controllare i breakeven e altro nel tick
+                Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, null);
+
+            }
+                
 
         }
 
