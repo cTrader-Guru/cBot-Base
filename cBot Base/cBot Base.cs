@@ -987,7 +987,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.6";
+        public const string VERSION = "1.1.7";
 
         #endregion
 
@@ -1400,6 +1400,9 @@ namespace cAlgo.Robots
             if (!HedgingOpportunity && Monitor1.Info.SellPositions > 0)
                 return false;
 
+            // --> Meglio fissare la logica per l'accesso ai dati, lo stato della candela in essere
+            int index = MyLoopType == LoopType.OnBar ? 1 : 0;
+
             // --> Criteri da stabilire
             return true;
 
@@ -1421,6 +1424,9 @@ namespace cAlgo.Robots
             if (!HedgingOpportunity && Monitor1.Info.BuyPositions > 0)
                 return false;
 
+            // --> Meglio fissare la logica per l'accesso ai dati, lo stato della candela in essere
+            int index = MyLoopType == LoopType.OnBar ? 1 : 0;
+
             // --> Criteri da stabilire
             return true;
 
@@ -1438,6 +1444,9 @@ namespace cAlgo.Robots
             if (!filter)
                 return false;
 
+            // --> Meglio fissare la logica per l'accesso ai dati, lo stato della candela in essere
+            int index = MyLoopType == LoopType.OnBar ? 1 : 0;
+
             // --> Criteri da stabilire
             return false;
 
@@ -1454,6 +1463,9 @@ namespace cAlgo.Robots
             // --> Il filtro primario deve essere presente altrimenti non serve continuare
             if (!filter)
                 return false;
+
+            // --> Meglio fissare la logica per l'accesso ai dati, lo stato della candela in essere
+            int index = MyLoopType == LoopType.OnBar ? 1 : 0;
 
             // --> Criteri da stabilire
             return false;
