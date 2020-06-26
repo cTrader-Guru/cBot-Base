@@ -987,7 +987,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.5";
+        public const string VERSION = "1.1.6";
 
         #endregion
 
@@ -1018,6 +1018,18 @@ namespace cAlgo.Robots
         public StopMode MyStopType { get; set; }
 
         /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
+        /// </summary>
+        [Parameter("Break Even", Group = "Strategy", DefaultValue = ProtectionType.OnlyFirst)]
+        public ProtectionType BreakEvenProtectionType { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Trailing per uno o per tutti i trades
+        /// </summary>
+        [Parameter("Trailing", Group = "Strategy", DefaultValue = ProtectionType.OnlyFirst)]
+        public ProtectionType TrailingProtectionType { get; set; }
+
+        /// <summary>
         /// Al raggiungimento di questo netprofit chiude tutto
         /// </summary>
         [Parameter("Money Target (zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 0.1)]
@@ -1028,97 +1040,6 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Slippage (pips)", Group = "Strategy", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
         public double SLIPPAGE { get; set; }
-
-        /// <summary>
-        /// Lo Stop Loss che verrà utilizzato per ogni operazione
-        /// </summary>
-        [Parameter("Stop Loss (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
-        public double SL { get; set; }
-
-        /// <summary>
-        /// Il Take Profit che verrà utilizzato per ogni operazione
-        /// </summary>
-        [Parameter("Take Profit (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
-        public double TP { get; set; }
-
-        /// <summary>
-        /// Il numero di periodi da controllare per calcolare lo stoploss
-        /// </summary>
-        [Parameter("Period", Group = "Auto Stop", DefaultValue = 5, MinValue = 1, Step = 1)]
-        public int AutoStopPeriod { get; set; }
-
-        /// <summary>
-        /// Il risk regard per il calcolo del take profit
-        /// </summary>
-        [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
-        public int AutoStopRR { get; set; }
-
-        /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
-        /// </summary>
-        [Parameter("Mode", Group = "Break Even", DefaultValue = ProtectionType.OnlyFirst)]
-        public ProtectionType BreakEvenProtectionType { get; set; }
-
-        /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even per la logica negativa
-        /// </summary>
-        [Parameter("Negative ?", Group = "Break Even", DefaultValue = true)]
-        public bool BreakEvenNegative { get; set; }
-
-        /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
-        /// </summary>
-        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 1, Step = 0.1)]
-        public double BreakEvenActivation { get; set; }
-
-        /// <summary>
-        /// Il numero di pips da spostare in caso di attivazione del Break Even, può essere inferiore a zero
-        /// </summary>
-        [Parameter("Distance (pips, move Stop Loss)", Group = "Break Even", DefaultValue = 1.5, Step = 0.1)]
-        public double BreakEvenDistance { get; set; }
-
-        /// <summary>
-        /// L'attivazione per il moniotraggio del Trailing per uno o per tutti i trades
-        /// </summary>
-        [Parameter("Mode", Group = "Trailing", DefaultValue = ProtectionType.OnlyFirst)]
-        public ProtectionType TrailingProtectionType { get; set; }
-
-        /// <summary>
-        /// L'attivazione per il moniotraggio del Trailing, se pari a zero disabilita il controllo
-        /// </summary>
-        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 1, Step = 0.1)]
-        public double TrailingActivation { get; set; }
-
-        /// <summary>
-        /// Il numero di pips che segna la distanza del Trailing, se pari a zero inibisce il Trailing
-        /// </summary>
-        [Parameter("Distance (pips, move Stop Loss)", Group = "Trailing", DefaultValue = 30, MinValue = 1, Step = 0.1)]
-        public double TrailingDistance { get; set; }
-
-        /// <summary>
-        /// Valore esclusivo che bypassa il calcolo del rischio, se pari a zero non prende in considerazione il valore manuale
-        /// </summary>
-        [Parameter("Fixed Lots", Group = "Money Management", DefaultValue = 0, MinValue = 0, Step = 0.01)]
-        public double FixedLots { get; set; }
-
-        /// <summary>
-        /// Il capitale da prendere in considerazione per il calcolo del rischio
-        /// </summary>
-        [Parameter("Capital", Group = "Money Management", DefaultValue = Extensions.CapitalTo.Balance)]
-        public Extensions.CapitalTo MyCapital { get; set; }
-
-        /// <summary>
-        /// La percentuale di rischio da calcolare per la size in lotti
-        /// </summary>
-        [Parameter("% Risk", Group = "Money Management", DefaultValue = 1, MinValue = 0.1, Step = 0.1)]
-        public double MyRisk { get; set; }
-
-        /// <summary>
-        /// Il numero di pips da prendere in considerazione se lo Stop Loss è pari a zero per calcolare la size, se
-        /// anche questo valore sarà zero allora verrà impostato 100 come valore nominale
-        /// </summary>
-        [Parameter("Pips To Calculate ( if no stoploss, empty = '100' )", Group = "Money Management", DefaultValue = 100, MinValue = 0, Step = 0.1)]
-        public double FakeSL { get; set; }
 
         /// <summary>
         /// Massimo spread consentito per le operazioni
@@ -1155,6 +1076,85 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Hedging Opportunity ?", Group = "Filters", DefaultValue = false)]
         public bool HedgingOpportunity { get; set; }
+
+        /// <summary>
+        /// Valore esclusivo che bypassa il calcolo del rischio, se pari a zero non prende in considerazione il valore manuale
+        /// </summary>
+        [Parameter("Fixed Lots", Group = "Money Management", DefaultValue = 0, MinValue = 0, Step = 0.01)]
+        public double FixedLots { get; set; }
+
+        /// <summary>
+        /// Il capitale da prendere in considerazione per il calcolo del rischio
+        /// </summary>
+        [Parameter("Capital", Group = "Money Management", DefaultValue = Extensions.CapitalTo.Balance)]
+        public Extensions.CapitalTo MyCapital { get; set; }
+
+        /// <summary>
+        /// La percentuale di rischio da calcolare per la size in lotti
+        /// </summary>
+        [Parameter("% Risk", Group = "Money Management", DefaultValue = 1, MinValue = 0.1, Step = 0.1)]
+        public double MyRisk { get; set; }
+
+        /// <summary>
+        /// Il numero di pips da prendere in considerazione se lo Stop Loss è pari a zero per calcolare la size, se
+        /// anche questo valore sarà zero allora verrà impostato 100 come valore nominale
+        /// </summary>
+        [Parameter("Pips To Calculate ( if no stoploss, empty = '100' )", Group = "Money Management", DefaultValue = 100, MinValue = 0, Step = 0.1)]
+        public double FakeSL { get; set; }
+
+        /// <summary>
+        /// Lo Stop Loss che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Stop Loss (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double SL { get; set; }
+
+        /// <summary>
+        /// Il Take Profit che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Take Profit (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double TP { get; set; }
+
+        /// <summary>
+        /// Il numero di periodi da controllare per calcolare lo stoploss
+        /// </summary>
+        [Parameter("Period", Group = "Auto Stop", DefaultValue = 5, MinValue = 1, Step = 1)]
+        public int AutoStopPeriod { get; set; }
+
+        /// <summary>
+        /// Il risk regard per il calcolo del take profit
+        /// </summary>
+        [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
+        public int AutoStopRR { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even per la logica negativa
+        /// </summary>
+        [Parameter("Negative ?", Group = "Break Even", DefaultValue = true)]
+        public bool BreakEvenNegative { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
+        /// </summary>
+        [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 1, Step = 0.1)]
+        public double BreakEvenActivation { get; set; }
+
+        /// <summary>
+        /// Il numero di pips da spostare in caso di attivazione del Break Even, può essere inferiore a zero
+        /// </summary>
+        [Parameter("Distance (pips, move Stop Loss)", Group = "Break Even", DefaultValue = 1.5, Step = 0.1)]
+        public double BreakEvenDistance { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il moniotraggio del Trailing, se pari a zero disabilita il controllo
+        /// </summary>
+        [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 1, Step = 0.1)]
+        public double TrailingActivation { get; set; }
+
+        /// <summary>
+        /// Il numero di pips che segna la distanza del Trailing, se pari a zero inibisce il Trailing
+        /// </summary>
+        [Parameter("Distance (pips, move Stop Loss)", Group = "Trailing", DefaultValue = 30, MinValue = 1, Step = 0.1)]
+        public double TrailingDistance { get; set; }
 
         /// <summary>
         /// Opzione per il debug che apre una posizione di test (label TEST)
@@ -1484,7 +1484,7 @@ namespace cAlgo.Robots
 
                         moneymanagement.PipToCalc = tmpSL;
                         volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
-                        
+
                     }
 
                     ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, label, tmpSL, tmpTP);
