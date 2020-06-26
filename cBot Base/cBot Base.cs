@@ -331,10 +331,12 @@ namespace cAlgo
                     }
 
                     // --> Poi tocca al break even
-                    if(!breakevendata.OnlyFirst || Positions.Length == 1) _checkBreakEven(position, breakevendata);
+                    if (!breakevendata.OnlyFirst || Positions.Length == 1)
+                        _checkBreakEven(position, breakevendata);
 
                     // --> Poi tocca al trailing
-                    if(!trailingdata.OnlyFirst || Positions.Length == 1) _checkTrailing(position, trailingdata);
+                    if (!trailingdata.OnlyFirst || Positions.Length == 1)
+                        _checkTrailing(position, trailingdata);
 
                     Info.TotalNetProfit += position.NetProfit;
                     tmpVolume += position.VolumeInUnits;
@@ -436,7 +438,7 @@ namespace cAlgo
 
                 if (breakevendata == null || breakevendata.Activation == 0)
                     return;
-                
+
                 switch (position.TradeType)
                 {
 
@@ -459,7 +461,7 @@ namespace cAlgo
                             }
 
                         }
-                        else if( breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
+                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
                         {
 
                             if (breakevendata.Distance == 0)
@@ -965,6 +967,14 @@ namespace cAlgo.Robots
 
         }
 
+        public enum StopMode
+        {
+
+            Standard,
+            Auto
+
+        }
+
         #endregion
 
         #region Identity
@@ -977,7 +987,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.4";
+        public const string VERSION = "1.1.5";
 
         #endregion
 
@@ -1004,17 +1014,8 @@ namespace cAlgo.Robots
         [Parameter("Loop", Group = "Strategy", DefaultValue = LoopType.OnBar)]
         public LoopType MyLoopType { get; set; }
 
-        /// <summary>
-        /// Lo Stop Loss che verrà utilizzato per ogni operazione
-        /// </summary>
-        [Parameter("Stop Loss (pips)", Group = "Strategy", DefaultValue = 100, MinValue = 0, Step = 0.1)]
-        public double SL { get; set; }
-
-        /// <summary>
-        /// Il Take Profit che verrà utilizzato per ogni operazione
-        /// </summary>
-        [Parameter("Take Profit (pips)", Group = "Strategy", DefaultValue = 100, MinValue = 0, Step = 0.1)]
-        public double TP { get; set; }
+        [Parameter("Stop", Group = "Strategy", DefaultValue = StopMode.Auto)]
+        public StopMode MyStopType { get; set; }
 
         /// <summary>
         /// Al raggiungimento di questo netprofit chiude tutto
@@ -1027,6 +1028,30 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Slippage (pips)", Group = "Strategy", DefaultValue = 2.0, MinValue = 0.5, Step = 0.1)]
         public double SLIPPAGE { get; set; }
+
+        /// <summary>
+        /// Lo Stop Loss che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Stop Loss (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double SL { get; set; }
+
+        /// <summary>
+        /// Il Take Profit che verrà utilizzato per ogni operazione
+        /// </summary>
+        [Parameter("Take Profit (pips)", Group = "Standard Stop", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double TP { get; set; }
+
+        /// <summary>
+        /// Il numero di periodi da controllare per calcolare lo stoploss
+        /// </summary>
+        [Parameter("Period", Group = "Auto Stop", DefaultValue = 5, MinValue = 1, Step = 1)]
+        public int AutoStopPeriod { get; set; }
+
+        /// <summary>
+        /// Il risk regard per il calcolo del take profit
+        /// </summary>
+        [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
+        public int AutoStopRR { get; set; }
 
         /// <summary>
         /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
@@ -1211,7 +1236,7 @@ namespace cAlgo.Robots
 
             // --> Effettuo un test di apertura per verificare il funzionamento del sistema
             if (OpenOnStart != MyTradeType.Disabled)
-                _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, MonenyManagement1, MyLabel);
+                _test((OpenOnStart == MyTradeType.Buy) ? TradeType.Buy : TradeType.Sell, Monitor1, MonenyManagement1, MyLabel);
 
         }
 
@@ -1236,7 +1261,8 @@ namespace cAlgo.Robots
             Monitor1.OpenedInThisBar = false;
 
             // --> Eseguo il loop solo se desidero farlo ad ogni cambio candela
-            if (MyLoopType == LoopType.OnBar) _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+            if (MyLoopType == LoopType.OnBar)
+                _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
 
         }
 
@@ -1247,7 +1273,8 @@ namespace cAlgo.Robots
         {
 
             // --> Eseguo il loop solo se desidero farlo ad ogni Tick
-            if (MyLoopType == LoopType.OnTick) _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
+            if (MyLoopType == LoopType.OnTick)
+                _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
 
         }
 
@@ -1293,20 +1320,50 @@ namespace cAlgo.Robots
 
             }
 
-            // --> Calcolo la size in base al money management stabilito
-            double volumeInUnits = Monitor1.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+            // --> Calcolo la size in base al money management stabilito, ma prima devo resettare la misura del calcolo
+            moneymanagement.PipToCalc = SL;
+            double volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+            double tmpSL = SL;
+            double tmpTP = TP;
 
             // --> Se ho il segnale d'ingresso considerando i filtri allora procedo con l'ordine a mercato
             if (triggerBuy)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Ask, monitor.Label, SL, TP);
+                // --> Devo dimensionare lo stop
+                if (MyStopType == StopMode.Auto)
+                {
+
+                    double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
+                    tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
+                    tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
+
+                    moneymanagement.PipToCalc = tmpSL;
+                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+                }
+
+                ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Ask, monitor.Label, tmpSL, tmpTP);
 
             }
             else if (triggerSell)
             {
 
-                ExecuteMarketRangeOrder(TradeType.Sell, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Bid, monitor.Label, SL, TP);
+                // --> Devo dimensionare lo stop
+                if (MyStopType == StopMode.Auto)
+                {
+
+                    double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
+                    tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
+                    tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
+
+                    moneymanagement.PipToCalc = tmpSL;
+                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+                }
+
+                ExecuteMarketRangeOrder(TradeType.Sell, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Bid, monitor.Label, tmpSL, tmpTP);
 
             }
 
@@ -1340,7 +1397,8 @@ namespace cAlgo.Robots
                 return false;
 
             // --> In caso di multi-operations non posso andare in hedging, a patto che non venga scelto esplicitamente
-            if (!HedgingOpportunity && Monitor1.Info.SellPositions > 0) return false;
+            if (!HedgingOpportunity && Monitor1.Info.SellPositions > 0)
+                return false;
 
             // --> Criteri da stabilire
             return true;
@@ -1360,7 +1418,8 @@ namespace cAlgo.Robots
                 return false;
 
             // --> In caso di multi-operations non posso andare in hedging, a patto che non venga scelto esplicitamente
-            if (!HedgingOpportunity && Monitor1.Info.BuyPositions > 0) return false;
+            if (!HedgingOpportunity && Monitor1.Info.BuyPositions > 0)
+                return false;
 
             // --> Criteri da stabilire
             return true;
@@ -1401,23 +1460,52 @@ namespace cAlgo.Robots
 
         }
 
-        private void _test(TradeType trigger, Extensions.MonenyManagement moneymanagement, string label = "TEST")
+        private void _test(TradeType trigger, Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, string label = "TEST")
         {
 
-            // --> Calcolo la size in base al money management stabilito
-            double volumeInUnits = moneymanagement.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+            moneymanagement.PipToCalc = SL;
+            double volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+            double tmpSL = SL;
+            double tmpTP = TP;
 
             switch (trigger)
             {
 
                 case TradeType.Buy:
 
-                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, label, SL, TP);
+                    // --> Devo dimensionare lo stop
+                    if (MyStopType == StopMode.Auto)
+                    {
+
+                        double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
+                        tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
+                        tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
+
+                        moneymanagement.PipToCalc = tmpSL;
+                        volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+                        
+                    }
+
+                    ExecuteMarketRangeOrder(TradeType.Buy, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Ask, label, tmpSL, tmpTP);
                     break;
 
                 case TradeType.Sell:
 
-                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Bid, label, SL, TP);
+                    // --> Devo dimensionare lo stop
+                    if (MyStopType == StopMode.Auto)
+                    {
+
+                        double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
+                        tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
+                        tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
+
+                        moneymanagement.PipToCalc = tmpSL;
+                        volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+
+                    }
+
+                    ExecuteMarketRangeOrder(TradeType.Sell, moneymanagement.Symbol.Name, volumeInUnits, SLIPPAGE, moneymanagement.Symbol.Bid, label, tmpSL, tmpTP);
                     break;
 
             }
