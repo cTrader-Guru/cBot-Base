@@ -246,6 +246,7 @@ namespace cAlgo
 
                 // --> In caso di operazioni multiple sarebbe bene evitare la gestione di tutte
                 public bool OnlyFirst = false;
+                public bool ProActive = false;
                 public double Activation = 0;
                 public double Distance = 0;
 
@@ -444,12 +445,14 @@ namespace cAlgo
                 if (breakevendata == null || breakevendata.Activation == 0)
                     return;
 
+                double activation = Symbol.PipsToDigits(breakevendata.Activation);
+
                 switch (position.TradeType)
                 {
 
                     case TradeType.Buy:
 
-                        if ((Symbol.Bid >= (position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
+                        if ((Symbol.Bid >= (position.EntryPrice + activation)) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
                         {
 
                             if (breakevendata.Distance == 0)
@@ -466,7 +469,7 @@ namespace cAlgo
                             }
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
+                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - activation)) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
                         {
 
                             if (breakevendata.Distance == 0)
@@ -488,7 +491,7 @@ namespace cAlgo
 
                     case TradeType.Sell:
 
-                        if ((Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits(breakevendata.Activation))) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
+                        if ((Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
                         {
 
                             if (breakevendata.Distance == 0)
@@ -505,7 +508,7 @@ namespace cAlgo
                             }
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + Symbol.PipsToDigits(breakevendata.Activation))) && (position.TakeProfit == null || position.TakeProfit < position.EntryPrice))
+                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < position.EntryPrice))
                         {
 
                             if (breakevendata.Distance == 0)
@@ -540,19 +543,47 @@ namespace cAlgo
                     return;
 
                 double trailing = 0;
+                double distance = Symbol.PipsToDigits(trailingdata.Distance);
+                double activation = Symbol.PipsToDigits(trailingdata.Activation);
 
                 switch (position.TradeType)
                 {
 
                     case TradeType.Buy:
 
-                        trailing = Math.Round(Symbol.Bid - Symbol.PipsToDigits(trailingdata.Distance), Symbol.Digits);
+                        trailing = Math.Round(Symbol.Bid - distance, Symbol.Digits);
 
-                        if ((Symbol.Bid >= (position.EntryPrice + Symbol.PipsToDigits(trailingdata.Activation))) && (position.StopLoss == null || position.StopLoss < trailing))
+                        if ((Symbol.Bid >= (position.EntryPrice + activation)) && (position.StopLoss == null || position.StopLoss < trailing))
                         {
 
                             position.ModifyStopLossPrice(trailing);
 
+                        }else if(trailingdata.ProActive && position.StopLoss != null && position.StopLoss > 0)
+                        {
+
+                            // --> Devo determinare se è partita l'attivazione
+                            double activationprice = position.EntryPrice + activation;
+                            double firsttrailing = Math.Round( activationprice - distance, Symbol.Digits);
+
+                            // --> Partito il trailing? Sono in retrocessione ?
+                            if (position.StopLoss >= firsttrailing)
+                            {
+                                
+                                double limitpriceup = Math.Round((double)position.StopLoss + distance, Symbol.Digits);
+                                double limitpricedw = Math.Round(Symbol.Bid - distance, Symbol.Digits);
+
+                                BENE A META, FORSE DEVO ESTENDERE Postion PER ARCHIVIARE IL VECCHIO PIVOT
+                                OPPURE TENER CONTO DEL PUNTO FISSO ENTRYPRICE CHE FORNIREBBE UN PIVOT FISSO
+
+                                double pivotprice = Math.Round(limitpricedw + ( (limitpriceup - limitpricedw) / 2 ), Symbol.Digits);
+                                double k = Math.Round(Symbol.Bid - pivotprice, Symbol.Digits);
+
+                                double newtrailing = Math.Round(pivotprice - k, Symbol.Digits);
+
+                                if (position.StopLoss < newtrailing) position.ModifyStopLossPrice(newtrailing);
+
+                            }
+                            
                         }
 
                         break;
@@ -565,6 +596,12 @@ namespace cAlgo
                         {
 
                             position.ModifyStopLossPrice(trailing);
+
+                        }
+                        else if (trailingdata.ProActive && position.StopLoss != null && position.StopLoss > 0)
+                        {
+
+
 
                         }
 
@@ -1168,6 +1205,12 @@ namespace cAlgo.Robots
         public double TrailingDistance { get; set; }
 
         /// <summary>
+        /// Attiva la logica proattiva per l'accelerazione del trailing
+        /// </summary>
+        [Parameter("ProActive ?", Group = "Trailing", DefaultValue = false)]
+        public bool TrailingProactive { get; set; }
+
+        /// <summary>
         /// Opzione per il debug che apre una posizione di test (label TEST)
         /// </summary>
         [Parameter("Open Position On Start", Group = "Debug", DefaultValue = MyTradeType.Disabled)]
@@ -1237,6 +1280,7 @@ namespace cAlgo.Robots
             {
 
                 OnlyFirst = TrailingProtectionType == ProtectionType.OnlyFirst,
+                ProActive = TrailingProactive,
                 Activation = (TrailingProtectionType != ProtectionType.Disabled) ? TrailingActivation : 0,
                 Distance = TrailingDistance
 
