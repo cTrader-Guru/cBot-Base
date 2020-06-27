@@ -257,6 +257,11 @@ namespace cAlgo
             public bool OpenedInThisBar = false;
 
             /// <summary>
+            /// Memorizza lo stato di apertura di una operazione con il trigger corrente
+            /// </summary>
+            public bool OpenedInThisTrigger = false;
+
+            /// <summary>
             /// Valore univoco che identifica la strategia
             /// </summary>
             public readonly string Label;
@@ -987,7 +992,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.1.9";
+        public const string VERSION = "1.2.0";
 
         #endregion
 
@@ -1292,7 +1297,7 @@ namespace cAlgo.Robots
                 Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, null);
 
             }
-                
+
 
         }
 
@@ -1310,6 +1315,7 @@ namespace cAlgo.Robots
             {
 
                 Monitor1.OpenedInThisBar = true;
+                Monitor1.OpenedInThisTrigger = true;
 
             }
 
@@ -1317,13 +1323,15 @@ namespace cAlgo.Robots
 
         private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
-
+            
             // --> Aggiorno le informazioni necessarie per gestire la strategia
             monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, null);
-
+            
+            // --> Controllo se ho il consenso a procedere con i trigger
+            _checkResetTrigger(monitor);
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
-            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
+            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.OpenedInThisBar && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
 
             // --> Controllo la presenza di trigger d'ingresso tenendo conto i filtri
             bool triggerBuy = _calculateLongTrigger(_calculateLongFilter(sharedCondition));
@@ -1355,7 +1363,8 @@ namespace cAlgo.Robots
 
                     double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
                     tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
-                    if (tmpSL < AutoMinPips) tmpSL = AutoMinPips;
+                    if (tmpSL < AutoMinPips)
+                        tmpSL = AutoMinPips;
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                     moneymanagement.PipToCalc = tmpSL;
@@ -1375,7 +1384,8 @@ namespace cAlgo.Robots
 
                     double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
                     tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
-                    if (tmpSL < AutoMinPips) tmpSL = AutoMinPips;
+                    if (tmpSL < AutoMinPips)
+                        tmpSL = AutoMinPips;
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                     moneymanagement.PipToCalc = tmpSL;
@@ -1392,6 +1402,25 @@ namespace cAlgo.Robots
         #endregion
 
         #region Strategy
+               
+        /// <summary>
+        /// Controlla la logica del trigger e ne resetta lo stato
+        /// </summary>
+        /// <param name="monitor"></param>
+        private void _checkResetTrigger(Extensions.Monitor monitor)
+        {
+
+            /*
+             
+                Bisogna sfruttare questo reset per impedire di aprire posizioni inutilmente, immaginate
+                un ingresso quando il trend è fortemente direzionale, in tal caso se fossimo controtrend
+                sarebbe un disastro quindi con questo flag si aspetta che il trend sia finito per tentare
+                di accedere contro trend di nuovo.
+             
+             */
+            monitor.OpenedInThisTrigger = false;
+
+        }
 
         /// <summary>
         /// Controlla e stabilisce se si devono chiudere tutte le posizioni
@@ -1512,7 +1541,8 @@ namespace cAlgo.Robots
 
                         double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
                         tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
-                        if (tmpSL < AutoMinPips) tmpSL = AutoMinPips;
+                        if (tmpSL < AutoMinPips)
+                            tmpSL = AutoMinPips;
                         tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                         moneymanagement.PipToCalc = tmpSL;
@@ -1531,7 +1561,8 @@ namespace cAlgo.Robots
 
                         double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
                         tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
-                        if (tmpSL < AutoMinPips) tmpSL = AutoMinPips;
+                        if (tmpSL < AutoMinPips)
+                            tmpSL = AutoMinPips;
                         tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                         moneymanagement.PipToCalc = tmpSL;
