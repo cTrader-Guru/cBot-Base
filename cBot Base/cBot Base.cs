@@ -210,6 +210,8 @@ namespace cAlgo
                 public int SellPositions = 0;
                 public Position FirstPosition = null;
                 public Position LastPosition = null;
+                public double HighestHighAfterFirstOpen = 0;
+                public double LowestLowAfterFirstOpen = 0;
 
             }
 
@@ -319,8 +321,16 @@ namespace cAlgo
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
                 Positions = _allPositions.FindAll(Label, Symbol.Name);
 
+                // --> Devo trascinarmi i vecchi dati prima di aggiornarli come massimali
+                double highestHighAfterFirstOpen = (Positions.Length > 0) ? Info.HighestHighAfterFirstOpen : 0;
+                double lowestLowAfterFirstOpen = (Positions.Length > 0) ? Info.LowestLowAfterFirstOpen : 0;
+
                 // --> Resetto le informazioni
                 Info = new Information();
+
+                // --> Inizializzo con i vecchi dati
+                Info.HighestHighAfterFirstOpen = highestHighAfterFirstOpen;
+                Info.LowestLowAfterFirstOpen = lowestLowAfterFirstOpen;
 
                 double tmpVolume = 0;
 
@@ -335,6 +345,10 @@ namespace cAlgo
                         continue;
 
                     }
+
+                    // --> Per il trailing proactive e altre feature devo conoscere lo stato attuale
+                    if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen) Info.HighestHighAfterFirstOpen = Symbol.Ask;
+                    if (Info.LowestLowAfterFirstOpen == 0 || Symbol.Bid < Info.LowestLowAfterFirstOpen) Info.LowestLowAfterFirstOpen = Symbol.Bid;
 
                     // --> Poi tocca al break even
                     if (!breakevendata.OnlyFirst || Positions.Length == 1)
@@ -558,7 +572,7 @@ namespace cAlgo
 
                             position.ModifyStopLossPrice(trailing);
 
-                        }else if(trailingdata.ProActive && position.StopLoss != null && position.StopLoss > 0)
+                        }else if(trailingdata.ProActive && Info.HighestHighAfterFirstOpen > 0 && position.StopLoss != null && position.StopLoss > 0)
                         {
 
                             // --> Devo determinare se è partita l'attivazione
@@ -569,16 +583,12 @@ namespace cAlgo
                             if (position.StopLoss >= firsttrailing)
                             {
                                 
-                                double limitpriceup = Math.Round((double)position.StopLoss + distance, Symbol.Digits);
-                                double limitpricedw = Math.Round(Symbol.Bid - distance, Symbol.Digits);
+                                double limitpriceup = Info.HighestHighAfterFirstOpen;
+                                double limitpricedw = Math.Round(Info.HighestHighAfterFirstOpen - distance, Symbol.Digits);
+                                
+                                double k = Math.Round(limitpriceup - Symbol.Ask, Symbol.Digits);
 
-                                BENE A META, FORSE DEVO ESTENDERE Postion PER ARCHIVIARE IL VECCHIO PIVOT
-                                OPPURE TENER CONTO DEL PUNTO FISSO ENTRYPRICE CHE FORNIREBBE UN PIVOT FISSO
-
-                                double pivotprice = Math.Round(limitpricedw + ( (limitpriceup - limitpricedw) / 2 ), Symbol.Digits);
-                                double k = Math.Round(Symbol.Bid - pivotprice, Symbol.Digits);
-
-                                double newtrailing = Math.Round(pivotprice - k, Symbol.Digits);
+                                double newtrailing = Math.Round(limitpricedw + k, Symbol.Digits);
 
                                 if (position.StopLoss < newtrailing) position.ModifyStopLossPrice(newtrailing);
 
@@ -598,10 +608,27 @@ namespace cAlgo
                             position.ModifyStopLossPrice(trailing);
 
                         }
-                        else if (trailingdata.ProActive && position.StopLoss != null && position.StopLoss > 0)
+                        else if (trailingdata.ProActive && Info.LowestLowAfterFirstOpen > 0 && position.StopLoss != null && position.StopLoss > 0)
                         {
 
+                            // --> Devo determinare se è partita l'attivazione
+                            double activationprice = position.EntryPrice - activation;
+                            double firsttrailing = Math.Round(activationprice + distance, Symbol.Digits);
 
+                            // --> Partito il trailing? Sono in retrocessione ?
+                            if (position.StopLoss <= firsttrailing)
+                            {
+
+                                double limitpriceup = Math.Round(Info.LowestLowAfterFirstOpen + distance, Symbol.Digits);
+                                double limitpricedw = Info.LowestLowAfterFirstOpen;
+
+                                double k = Math.Round( Symbol.Bid - limitpricedw, Symbol.Digits);
+
+                                double newtrailing = Math.Round(limitpriceup - k, Symbol.Digits);
+
+                                if (position.StopLoss > newtrailing) position.ModifyStopLossPrice(newtrailing);
+
+                            }
 
                         }
 
@@ -1029,7 +1056,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.0";
+        public const string VERSION = "1.2.1";
 
         #endregion
 
