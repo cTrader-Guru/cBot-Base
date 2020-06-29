@@ -236,6 +236,7 @@ namespace cAlgo
                 public bool OnlyFirst = false;
                 public bool Negative = false;
                 public double Activation = 0;
+                public int LimitBar = 0;
                 public double Distance = 0;
 
             }
@@ -461,43 +462,29 @@ namespace cAlgo
 
                 double activation = Symbol.PipsToDigits(breakevendata.Activation);
 
+                int currentMinutes = Bars.TimeFrame.ToMinutes();
+                DateTime limitTime = position.EntryTime.AddMinutes(currentMinutes * breakevendata.LimitBar);
+                bool limitActivation = (breakevendata.LimitBar > 0 && Bars.Last(0).OpenTime >= limitTime);
+
+                double distance = Symbol.PipsToDigits(breakevendata.Distance);
+
                 switch (position.TradeType)
                 {
 
                     case TradeType.Buy:
 
-                        if ((Symbol.Bid >= (position.EntryPrice + activation)) && (position.StopLoss == null || position.StopLoss < position.EntryPrice))
+                        double breakevenpointbuy = Math.Round(position.EntryPrice + distance, Symbol.Digits);
+
+                        if ((Symbol.Bid >= (position.EntryPrice + activation) || limitActivation) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
                         {
 
-                            if (breakevendata.Distance == 0)
-                            {
-
-                                position.ModifyStopLossPrice(position.EntryPrice);
-
-                            }
-                            else
-                            {
-
-                                position.ModifyStopLossPips(breakevendata.Distance * -1);
-
-                            }
+                            position.ModifyStopLossPrice(breakevenpointbuy);
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - activation)) && (position.TakeProfit == null || position.TakeProfit > position.EntryPrice))
+                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - activation) || limitActivation) && (position.TakeProfit == null || position.TakeProfit > breakevenpointbuy))
                         {
 
-                            if (breakevendata.Distance == 0)
-                            {
-
-                                position.ModifyTakeProfitPips(position.EntryPrice);
-
-                            }
-                            else
-                            {
-
-                                position.ModifyTakeProfitPips(breakevendata.Distance);
-
-                            }
+                            position.ModifyTakeProfitPrice(breakevenpointbuy);
 
                         }
 
@@ -505,38 +492,18 @@ namespace cAlgo
 
                     case TradeType.Sell:
 
-                        if ((Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > position.EntryPrice))
+                        double breakevenpointsell = Math.Round(position.EntryPrice - distance, Symbol.Digits);
+
+                        if ((Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
                         {
 
-                            if (breakevendata.Distance == 0)
-                            {
-
-                                position.ModifyStopLossPrice(position.EntryPrice);
-
-                            }
-                            else
-                            {
-
-                                position.ModifyStopLossPips(breakevendata.Distance * -1);
-
-                            }
+                            position.ModifyStopLossPrice(breakevenpointsell);
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < position.EntryPrice))
+                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < breakevenpointsell))
                         {
 
-                            if (breakevendata.Distance == 0)
-                            {
-
-                                position.ModifyTakeProfitPips(position.EntryPrice);
-
-                            }
-                            else
-                            {
-
-                                position.ModifyTakeProfitPips(breakevendata.Distance);
-
-                            }
+                            position.ModifyTakeProfitPrice(breakevenpointsell);
 
                         }
 
@@ -572,20 +539,21 @@ namespace cAlgo
 
                             position.ModifyStopLossPrice(trailing);
 
-                        }else if(trailingdata.ProActive && Info.HighestHighAfterFirstOpen > 0 && position.StopLoss != null && position.StopLoss > 0)
+                        }
+                        else if (trailingdata.ProActive && Info.HighestHighAfterFirstOpen > 0 && position.StopLoss != null && position.StopLoss > 0)
                         {
 
                             // --> Devo determinare se è partita l'attivazione
                             double activationprice = position.EntryPrice + activation;
-                            double firsttrailing = Math.Round( activationprice - distance, Symbol.Digits);
+                            double firsttrailing = Math.Round(activationprice - distance, Symbol.Digits);
 
                             // --> Partito il trailing? Sono in retrocessione ?
                             if (position.StopLoss >= firsttrailing)
                             {
-                                
+
                                 double limitpriceup = Info.HighestHighAfterFirstOpen;
                                 double limitpricedw = Math.Round(Info.HighestHighAfterFirstOpen - distance, Symbol.Digits);
-                                
+
                                 double k = Math.Round(limitpriceup - Symbol.Ask, Symbol.Digits);
 
                                 double newtrailing = Math.Round(limitpricedw + k, Symbol.Digits);
@@ -593,7 +561,7 @@ namespace cAlgo
                                 if (position.StopLoss < newtrailing) position.ModifyStopLossPrice(newtrailing);
 
                             }
-                            
+
                         }
 
                         break;
@@ -622,7 +590,7 @@ namespace cAlgo
                                 double limitpriceup = Math.Round(Info.LowestLowAfterFirstOpen + distance, Symbol.Digits);
                                 double limitpricedw = Info.LowestLowAfterFirstOpen;
 
-                                double k = Math.Round( Symbol.Bid - limitpricedw, Symbol.Digits);
+                                double k = Math.Round(Symbol.Bid - limitpricedw, Symbol.Digits);
 
                                 double newtrailing = Math.Round(limitpriceup - k, Symbol.Digits);
 
@@ -1056,7 +1024,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.1";
+        public const string VERSION = "1.2.2";
 
         #endregion
 
@@ -1202,16 +1170,22 @@ namespace cAlgo.Robots
         public int AutoStopRR { get; set; }
 
         /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even per la logica negativa
+        /// L'attivazione per il monitoraggio del Break Even per la logica negativa
         /// </summary>
         [Parameter("Negative ?", Group = "Break Even", DefaultValue = true)]
         public bool BreakEvenNegative { get; set; }
 
         /// <summary>
-        /// L'attivazione per il moniotraggio del Break Even, se pari a zero disabilita il controllo
+        /// L'attivazione per il monitoraggio del Break Even, se pari a zero disabilita il controllo
         /// </summary>
         [Parameter("Activation (pips)", Group = "Break Even", DefaultValue = 30, MinValue = 1, Step = 0.1)]
         public double BreakEvenActivation { get; set; }
+
+        /// <summary>
+        /// L'attivazione per il monitoraggio del Break Even dopo un numero di barre, se pari a zero disabilita il controllo
+        /// </summary>
+        [Parameter("Activation Limit (bars)", Group = "Break Even", DefaultValue = 11, MinValue = 0, Step = 1)]
+        public int BreakEvenLimitBars { get; set; }
 
         /// <summary>
         /// Il numero di pips da spostare in caso di attivazione del Break Even, può essere inferiore a zero
@@ -1220,7 +1194,7 @@ namespace cAlgo.Robots
         public double BreakEvenDistance { get; set; }
 
         /// <summary>
-        /// L'attivazione per il moniotraggio del Trailing, se pari a zero disabilita il controllo
+        /// L'attivazione per il monitoraggio del Trailing, se pari a zero disabilita il controllo
         /// </summary>
         [Parameter("Activation (pips)", Group = "Trailing", DefaultValue = 40, MinValue = 1, Step = 0.1)]
         public double TrailingActivation { get; set; }
@@ -1277,7 +1251,7 @@ namespace cAlgo.Robots
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
-            Pause1 = new Extensions.Monitor.PauseTimes 
+            Pause1 = new Extensions.Monitor.PauseTimes
             {
 
                 Over = PauseOver,
@@ -1292,18 +1266,19 @@ namespace cAlgo.Robots
             MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Symbol);
 
             // --> Inizializzo i dati per la gestione del breakeven
-            BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
             {
 
                 OnlyFirst = BreakEvenProtectionType == ProtectionType.OnlyFirst,
                 Negative = BreakEvenNegative,
                 Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
+                LimitBar = BreakEvenLimitBars,
                 Distance = BreakEvenDistance
 
             };
 
             // --> Inizializzo i dati per la gestione del Trailing
-            TrailingData1 = new Extensions.Monitor.TrailingData 
+            TrailingData1 = new Extensions.Monitor.TrailingData
             {
 
                 OnlyFirst = TrailingProtectionType == ProtectionType.OnlyFirst,
@@ -1394,10 +1369,10 @@ namespace cAlgo.Robots
 
         private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
-            
+
             // --> Aggiorno le informazioni necessarie per gestire la strategia
             monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, null);
-            
+
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
 
@@ -1473,7 +1448,7 @@ namespace cAlgo.Robots
         #endregion
 
         #region Strategy
-               
+
         /// <summary>
         /// Controlla la logica del trigger e ne resetta lo stato
         /// </summary>
