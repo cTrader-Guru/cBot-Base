@@ -1024,7 +1024,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.2";
+        public const string VERSION = "1.2.3";
 
         #endregion
 
@@ -1071,6 +1071,12 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Money Target (zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 0.1)]
         public double MoneyTarget { get; set; }
+
+        /// <summary>
+        /// Vincolo il money target solo per un certo numero di trades in poi
+        /// </summary>
+        [Parameter("Money Target Minimum Trades", Group = "Strategy", DefaultValue = 1, MinValue = 1, Step = 1)]
+        public int MoneyTargetTrades { get; set; }
 
         /// <summary>
         /// Il broker dovrebbe considerare questo valore come massimo slittamento
@@ -1475,7 +1481,9 @@ namespace cAlgo.Robots
         {
 
             // --> Criteri da stabilire con la strategia, monitor.Positions......
-            return (MoneyTarget > 0 && monitor.Info.TotalNetProfit >= MoneyTarget);
+            bool numtargets = monitor.Positions.Length >= MoneyTargetTrades;
+
+            return (numtargets && MoneyTarget > 0 && monitor.Info.TotalNetProfit >= MoneyTarget);
 
         }
 
