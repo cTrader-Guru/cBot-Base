@@ -348,8 +348,10 @@ namespace cAlgo
                     }
 
                     // --> Per il trailing proactive e altre feature devo conoscere lo stato attuale
-                    if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen) Info.HighestHighAfterFirstOpen = Symbol.Ask;
-                    if (Info.LowestLowAfterFirstOpen == 0 || Symbol.Bid < Info.LowestLowAfterFirstOpen) Info.LowestLowAfterFirstOpen = Symbol.Bid;
+                    if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen)
+                        Info.HighestHighAfterFirstOpen = Symbol.Ask;
+                    if (Info.LowestLowAfterFirstOpen == 0 || Symbol.Bid < Info.LowestLowAfterFirstOpen)
+                        Info.LowestLowAfterFirstOpen = Symbol.Bid;
 
                     // --> Poi tocca al break even
                     if (!breakevendata.OnlyFirst || Positions.Length == 1)
@@ -558,7 +560,8 @@ namespace cAlgo
 
                                 double newtrailing = Math.Round(limitpricedw + k, Symbol.Digits);
 
-                                if (position.StopLoss < newtrailing) position.ModifyStopLossPrice(newtrailing);
+                                if (position.StopLoss < newtrailing)
+                                    position.ModifyStopLossPrice(newtrailing);
 
                             }
 
@@ -594,7 +597,8 @@ namespace cAlgo
 
                                 double newtrailing = Math.Round(limitpriceup - k, Symbol.Digits);
 
-                                if (position.StopLoss > newtrailing) position.ModifyStopLossPrice(newtrailing);
+                                if (position.StopLoss > newtrailing)
+                                    position.ModifyStopLossPrice(newtrailing);
 
                             }
 
@@ -1024,7 +1028,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.3";
+        public const string VERSION = "1.2.4";
 
         #endregion
 
@@ -1257,7 +1261,7 @@ namespace cAlgo.Robots
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
-            Pause1 = new Extensions.Monitor.PauseTimes
+            Pause1 = new Extensions.Monitor.PauseTimes 
             {
 
                 Over = PauseOver,
@@ -1272,7 +1276,7 @@ namespace cAlgo.Robots
             MonenyManagement1 = new Extensions.MonenyManagement(Account, MyCapital, MyRisk, FixedLots, SL > 0 ? SL : FakeSL, Symbol);
 
             // --> Inizializzo i dati per la gestione del breakeven
-            BreakEvenData1 = new Extensions.Monitor.BreakEvenData
+            BreakEvenData1 = new Extensions.Monitor.BreakEvenData 
             {
 
                 OnlyFirst = BreakEvenProtectionType == ProtectionType.OnlyFirst,
@@ -1284,7 +1288,7 @@ namespace cAlgo.Robots
             };
 
             // --> Inizializzo i dati per la gestione del Trailing
-            TrailingData1 = new Extensions.Monitor.TrailingData
+            TrailingData1 = new Extensions.Monitor.TrailingData 
             {
 
                 OnlyFirst = TrailingProtectionType == ProtectionType.OnlyFirst,
@@ -1383,7 +1387,7 @@ namespace cAlgo.Robots
             _checkResetTrigger(monitor);
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
-            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.OpenedInThisBar && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
+            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.OpenedInThisTrigger && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
 
             // --> Controllo la presenza di trigger d'ingresso tenendo conto i filtri
             bool triggerBuy = _calculateLongTrigger(_calculateLongFilter(sharedCondition));
@@ -1462,7 +1466,7 @@ namespace cAlgo.Robots
         private void _checkResetTrigger(Extensions.Monitor monitor)
         {
 
-            /*
+                        /*
              
                 Bisogna sfruttare questo reset per impedire di aprire posizioni inutilmente, immaginate
                 un ingresso quando il trend è fortemente direzionale, in tal caso se fossimo controtrend
@@ -1470,7 +1474,7 @@ namespace cAlgo.Robots
                 di accedere contro trend di nuovo.
              
              */
-            monitor.OpenedInThisTrigger = false;
+monitor.OpenedInThisTrigger = false;
 
         }
 
