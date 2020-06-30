@@ -788,13 +788,13 @@ namespace cAlgo
             if (thisBars.ClosePrices.Last(1) > thisBars.OpenPrices.LastValue)
             {
 
-                K = Math.Round(thisBars.ClosePrices.Last(1) - thisBars.OpenPrices.LastValue);
+                K = Math.Round(thisBars.ClosePrices.Last(1) - thisBars.OpenPrices.LastValue, 5);
 
             }
             else if (thisBars.ClosePrices.Last(1) < thisBars.OpenPrices.LastValue)
             {
 
-                K = Math.Round(thisBars.OpenPrices.LastValue - thisBars.ClosePrices.Last(1));
+                K = Math.Round(thisBars.OpenPrices.LastValue - thisBars.ClosePrices.Last(1), 5);
 
             }
 
@@ -1028,7 +1028,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.4";
+        public const string VERSION = "1.2.5";
 
         #endregion
 
