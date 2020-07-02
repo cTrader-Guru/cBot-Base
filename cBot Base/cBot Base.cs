@@ -1036,7 +1036,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.8";
+        public const string VERSION = "1.2.9";
 
         #endregion
 
@@ -1069,7 +1069,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// Il numero minimo di pips da considerare in caso della rimozione del broker
         /// </summary>
-        [Parameter("Stop Level", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
+        [Parameter("Safe StopLoss", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
         public double StopLevel { get; set; }
 
         /// <summary>
@@ -1256,7 +1256,7 @@ namespace cAlgo.Robots
         Extensions.MonenyManagement MonenyManagement1;
         Extensions.Monitor.BreakEvenData BreakEvenData1;
         Extensions.Monitor.TrailingData TrailingData1;
-        
+
         private double SafeLoss = 0;
 
         #endregion
