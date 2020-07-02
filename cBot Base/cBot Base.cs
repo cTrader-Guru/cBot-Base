@@ -463,6 +463,14 @@ namespace cAlgo
                 if (breakevendata == null || breakevendata.Activation == 0)
                     return;
 
+                if (breakevendata.SafeLoss > 0 && position.StopLoss == null)
+                {
+
+                    position.ModifyStopLossPips(breakevendata.SafeLoss);
+                    return;
+
+                }
+
                 double activation = Symbol.PipsToDigits(breakevendata.Activation);
 
                 int currentMinutes = Bars.TimeFrame.ToMinutes();
@@ -1029,7 +1037,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.6";
+        public const string VERSION = "1.2.7";
 
         #endregion
 
