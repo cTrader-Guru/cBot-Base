@@ -238,6 +238,7 @@ namespace cAlgo
                 public double Activation = 0;
                 public int LimitBar = 0;
                 public double Distance = 0;
+                public double SafeLoss = 0;
 
             }
 
@@ -1028,7 +1029,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.5";
+        public const string VERSION = "1.2.6";
 
         #endregion
 
@@ -1174,6 +1175,12 @@ namespace cAlgo.Robots
         public double AutoMinPips { get; set; }
 
         /// <summary>
+        /// Il numero minimo di pips da considerare in caso della rimozione del broker
+        /// </summary>
+        [Parameter("Safe Loss (zero ignore)", Group = "Stop Auto", DefaultValue = 20, MinValue = 0, Step = 0.1)]
+        public double AutoSafeLoss { get; set; }
+
+        /// <summary>
         /// Il risk regard per il calcolo del take profit
         /// </summary>
         [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
@@ -1283,7 +1290,8 @@ namespace cAlgo.Robots
                 Negative = BreakEvenNegative,
                 Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
                 LimitBar = BreakEvenLimitBars,
-                Distance = BreakEvenDistance
+                Distance = BreakEvenDistance,
+                SafeLoss = (MyStopType == StopMode.Auto) ? AutoSafeLoss : 0
 
             };
 
