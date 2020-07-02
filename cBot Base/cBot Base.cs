@@ -238,7 +238,6 @@ namespace cAlgo
                 public double Activation = 0;
                 public int LimitBar = 0;
                 public double Distance = 0;
-                public double SafeLoss = 0;
 
             }
 
@@ -310,14 +309,14 @@ namespace cAlgo
                 _allPositions = AllPositions;
 
                 // --> Rendiamo sin da subito disponibili le informazioni
-                Update(false, null, null);
+                Update(false, null, null, 0);
 
             }
 
             /// <summary>
             /// Filtra e rende disponibili le informazioni per la strategia monitorata. Eventualmente Chiude e gestisce le operazioni
             /// </summary>
-            public Information Update(bool closeall, BreakEvenData breakevendata, TrailingData trailingdata, TradeType? filtertype = null)
+            public Information Update(bool closeall, BreakEvenData breakevendata, TrailingData trailingdata, double SafeLoss, TradeType? filtertype = null)
             {
 
                 // --> Raccolgo le informazioni che mi servono per avere il polso della strategia
@@ -344,6 +343,14 @@ namespace cAlgo
                     {
 
                         position.Close();
+                        continue;
+
+                    }
+
+                    if (SafeLoss > 0 && position.StopLoss == null)
+                    {
+
+                        position.ModifyStopLossPips(SafeLoss);
                         continue;
 
                     }
@@ -407,7 +414,7 @@ namespace cAlgo
             public void CloseAllPositions(TradeType? filtertype = null)
             {
 
-                Update(true, null, null, filtertype);
+                Update(true, null, null, 0, filtertype);
 
             }
 
@@ -462,14 +469,6 @@ namespace cAlgo
 
                 if (breakevendata == null || breakevendata.Activation == 0)
                     return;
-
-                if (breakevendata.SafeLoss > 0 && position.StopLoss == null)
-                {
-
-                    position.ModifyStopLossPips(breakevendata.SafeLoss);
-                    return;
-
-                }
 
                 double activation = Symbol.PipsToDigits(breakevendata.Activation);
 
@@ -1037,7 +1036,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.7";
+        public const string VERSION = "1.2.8";
 
         #endregion
 
@@ -1066,6 +1065,12 @@ namespace cAlgo.Robots
 
         [Parameter("Stop", Group = "Strategy", DefaultValue = StopMode.Auto)]
         public StopMode MyStopType { get; set; }
+
+        /// <summary>
+        /// Il numero minimo di pips da considerare in caso della rimozione del broker
+        /// </summary>
+        [Parameter("Stop Level", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
+        public double StopLevel { get; set; }
 
         /// <summary>
         /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
@@ -1183,12 +1188,6 @@ namespace cAlgo.Robots
         public double AutoMinPips { get; set; }
 
         /// <summary>
-        /// Il numero minimo di pips da considerare in caso della rimozione del broker
-        /// </summary>
-        [Parameter("Safe Loss (zero ignore)", Group = "Stop Auto", DefaultValue = 20, MinValue = 0, Step = 0.1)]
-        public double AutoSafeLoss { get; set; }
-
-        /// <summary>
         /// Il risk regard per il calcolo del take profit
         /// </summary>
         [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
@@ -1257,6 +1256,8 @@ namespace cAlgo.Robots
         Extensions.MonenyManagement MonenyManagement1;
         Extensions.Monitor.BreakEvenData BreakEvenData1;
         Extensions.Monitor.TrailingData TrailingData1;
+        
+        private double SafeLoss = 0;
 
         #endregion
 
@@ -1270,6 +1271,8 @@ namespace cAlgo.Robots
 
             // --> Stampo nei log la versione corrente
             Print("{0} : {1}", NAME, VERSION);
+
+            SafeLoss = (MyStopType == StopMode.Auto || SL > 0) ? StopLevel : 0;
 
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
             if (Chart.CanDraw(RunningMode))
@@ -1298,8 +1301,7 @@ namespace cAlgo.Robots
                 Negative = BreakEvenNegative,
                 Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
                 LimitBar = BreakEvenLimitBars,
-                Distance = BreakEvenDistance,
-                SafeLoss = (MyStopType == StopMode.Auto) ? AutoSafeLoss : 0
+                Distance = BreakEvenDistance
 
             };
 
@@ -1366,7 +1368,7 @@ namespace cAlgo.Robots
             {
 
                 // --> Devo comunque controllare i breakeven e altro nel tick
-                Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, null);
+                Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, SafeLoss, null);
 
             }
 
@@ -1397,7 +1399,7 @@ namespace cAlgo.Robots
         {
 
             // --> Aggiorno le informazioni necessarie per gestire la strategia
-            monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, null);
+            monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, SafeLoss, null);
 
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
