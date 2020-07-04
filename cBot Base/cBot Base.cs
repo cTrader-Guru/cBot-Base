@@ -337,6 +337,12 @@ namespace cAlgo
 
                 foreach (Position position in Positions)
                 {
+                    
+                    // --> Per il trailing proactive e altre feature devo conoscere lo stato attuale
+                    if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen)
+                        Info.HighestHighAfterFirstOpen = Symbol.Ask;
+                    if (Info.LowestLowAfterFirstOpen == 0 || Symbol.Bid < Info.LowestLowAfterFirstOpen)
+                        Info.LowestLowAfterFirstOpen = Symbol.Bid;
 
                     // --> Per prima cosa devo controllare se chiudere la posizione
                     if (closeall && (filtertype == null || position.TradeType == filtertype))
@@ -350,16 +356,19 @@ namespace cAlgo
                     if (SafeLoss > 0 && position.StopLoss == null)
                     {
 
-                        position.ModifyStopLossPips(SafeLoss);
+                        TradeResult result = position.ModifyStopLossPips(SafeLoss);
+
+                        // --> Troppa voaltilità potrebbe portare a proporzioni e valori errati, comunque non andiamo oltre 
+                        if (result.Error == ErrorCode.InvalidRequest || result.Error == ErrorCode.InvalidStopLossTakeProfit)
+                        {
+
+                            position.Close();
+
+                        }
+
                         continue;
 
                     }
-
-                    // --> Per il trailing proactive e altre feature devo conoscere lo stato attuale
-                    if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen)
-                        Info.HighestHighAfterFirstOpen = Symbol.Ask;
-                    if (Info.LowestLowAfterFirstOpen == 0 || Symbol.Bid < Info.LowestLowAfterFirstOpen)
-                        Info.LowestLowAfterFirstOpen = Symbol.Bid;
 
                     // --> Poi tocca al break even
                     if (!breakevendata.OnlyFirst || Positions.Length == 1)
@@ -1036,7 +1045,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.2.9";
+        public const string VERSION = "1.3.0";
 
         #endregion
 
