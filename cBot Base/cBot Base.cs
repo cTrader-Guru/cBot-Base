@@ -306,6 +306,8 @@ namespace cAlgo
                 Bars = NewBars;
                 Pause = NewPause;
 
+                Info = new Information();
+
                 _allPositions = AllPositions;
 
                 // --> Rendiamo sin da subito disponibili le informazioni
@@ -371,11 +373,11 @@ namespace cAlgo
                     }
 
                     // --> Poi tocca al break even
-                    if (!breakevendata.OnlyFirst || Positions.Length == 1)
+                    if ((breakevendata != null && !breakevendata.OnlyFirst) || Positions.Length == 1)
                         _checkBreakEven(position, breakevendata);
 
                     // --> Poi tocca al trailing
-                    if (!trailingdata.OnlyFirst || Positions.Length == 1)
+                    if ((trailingdata != null && !trailingdata.OnlyFirst) || Positions.Length == 1)
                         _checkTrailing(position, trailingdata);
 
                     Info.TotalNetProfit += position.NetProfit;
@@ -1045,7 +1047,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.0";
+        public const string VERSION = "1.3.1";
 
         #endregion
 
