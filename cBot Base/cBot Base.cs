@@ -329,11 +329,14 @@ namespace cAlgo
                 double lowestLowAfterFirstOpen = (Positions.Length > 0) ? Info.LowestLowAfterFirstOpen : 0;
 
                 // --> Resetto le informazioni
-                Info = new Information();
+                Info = new Information
+                {
 
-                // --> Inizializzo con i vecchi dati
-                Info.HighestHighAfterFirstOpen = highestHighAfterFirstOpen;
-                Info.LowestLowAfterFirstOpen = lowestLowAfterFirstOpen;
+                    // --> Inizializzo con i vecchi dati
+                    HighestHighAfterFirstOpen = highestHighAfterFirstOpen,
+                    LowestLowAfterFirstOpen = lowestLowAfterFirstOpen
+
+                };
 
                 double tmpVolume = 0;
 
@@ -906,21 +909,7 @@ namespace cAlgo
         }
 
         #endregion
-
-        #region Chart
-
-        /// <summary>
-        /// Determina se ci sono le condizioni per disegnare sul grafico
-        /// </summary>
-        public static bool CanDraw(this Chart thisChart, RunningMode thisRunning)
-        {
-
-            return thisRunning == RunningMode.RealTime || thisRunning == RunningMode.VisualBacktesting;
-
-        }
-
-        #endregion
-
+             
         #region TimeFrame
 
         /// <summary>
@@ -1047,7 +1036,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.1";
+        public const string VERSION = "1.3.2";
 
         #endregion
 
@@ -1258,6 +1247,12 @@ namespace cAlgo.Robots
         [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral)]
         public Extensions.ColorNameEnum TextColor { get; set; }
 
+        /// <summary>
+        /// Flag per visualizzare eventuali messaggi di debug
+        /// </summary>
+        [Parameter("Verbose ?", Group = "Debug", DefaultValue = true)]
+        public bool DebugVerbose { get; set; }
+
         #endregion
 
         #region Property
@@ -1286,7 +1281,7 @@ namespace cAlgo.Robots
             SafeLoss = (MyStopType == StopMode.Auto || SL > 0) ? StopLevel : 0;
 
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
-            if (Chart.CanDraw(RunningMode))
+            if (_canDraw())
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
@@ -1664,6 +1659,25 @@ monitor.OpenedInThisTrigger = false;
 
         }
 
+        /// <summary>
+        /// Controlla se sono possibili operazioni grafiche sul Chart, da utilizzare prima di ogni chiamata al Chart
+        /// </summary>
+        private bool _canDraw()
+        {
+
+            return RunningMode == RunningMode.RealTime || RunningMode == RunningMode.VisualBacktesting;
+
+        }
+
+        private void _log(string text)
+        {
+
+            if (!DebugVerbose || text.Trim().Length == 0)
+                return;
+
+            Print("{0} : {1}", NAME, text.Trim());
+
+        }
         #endregion
 
     }
