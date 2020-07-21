@@ -329,7 +329,7 @@ namespace cAlgo
                 double lowestLowAfterFirstOpen = (Positions.Length > 0) ? Info.LowestLowAfterFirstOpen : 0;
 
                 // --> Resetto le informazioni
-                Info = new Information
+                Info = new Information 
                 {
 
                     // --> Inizializzo con i vecchi dati
@@ -342,7 +342,7 @@ namespace cAlgo
 
                 foreach (Position position in Positions)
                 {
-                    
+
                     // --> Per il trailing proactive e altre feature devo conoscere lo stato attuale
                     if (Info.HighestHighAfterFirstOpen == 0 || Symbol.Ask > Info.HighestHighAfterFirstOpen)
                         Info.HighestHighAfterFirstOpen = Symbol.Ask;
@@ -909,7 +909,7 @@ namespace cAlgo
         }
 
         #endregion
-             
+
         #region TimeFrame
 
         /// <summary>
@@ -1036,7 +1036,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.2";
+        public const string VERSION = "1.3.3";
 
         #endregion
 
@@ -1191,7 +1191,7 @@ namespace cAlgo.Robots
         /// Il risk regard per il calcolo del take profit
         /// </summary>
         [Parameter("R:R (zero disable take profit)", Group = "Auto Stop", DefaultValue = 0, MinValue = 0, Step = 1)]
-        public int AutoStopRR { get; set; }
+        public double AutoStopRR { get; set; }
 
         /// <summary>
         /// L'attivazione per il monitoraggio del Break Even per la logica negativa
