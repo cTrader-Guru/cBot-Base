@@ -184,6 +184,18 @@ namespace cAlgo
 
         }
 
+        /// <summary>
+        /// Enumera la possibilità di scelta della direzione del profitto
+        /// </summary>
+        public enum ProfitDirection
+        {
+
+            All,
+            Positive,
+            Negative
+
+        }
+
         #endregion
 
         #region Class
@@ -234,7 +246,7 @@ namespace cAlgo
 
                 // --> In caso di operazioni multiple sarebbe bene evitare la gestione di tutte
                 public bool OnlyFirst = false;
-                public bool Negative = false;
+                public ProfitDirection ProfitDirection = ProfitDirection.All;
                 public double Activation = 0;
                 public int LimitBar = 0;
                 public double Distance = 0;
@@ -499,13 +511,13 @@ namespace cAlgo
 
                         double breakevenpointbuy = Math.Round(position.EntryPrice + distance, Symbol.Digits);
 
-                        if ((Symbol.Bid >= (position.EntryPrice + activation) || limitActivation) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
+                        if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Bid >= (position.EntryPrice + activation) || limitActivation) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
                         {
 
                             position.ModifyStopLossPrice(breakevenpointbuy);
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Bid <= (position.EntryPrice - activation) || limitActivation) && (position.TakeProfit == null || position.TakeProfit > breakevenpointbuy))
+                        else if (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Bid <= (position.EntryPrice - activation) || limitActivation) && (position.TakeProfit == null || position.TakeProfit > breakevenpointbuy))
                         {
 
                             position.ModifyTakeProfitPrice(breakevenpointbuy);
@@ -518,13 +530,13 @@ namespace cAlgo
 
                         double breakevenpointsell = Math.Round(position.EntryPrice - distance, Symbol.Digits);
 
-                        if ((Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
+                        if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
                         {
 
                             position.ModifyStopLossPrice(breakevenpointsell);
 
                         }
-                        else if (breakevendata.Negative && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < breakevenpointsell))
+                        else if (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < breakevenpointsell))
                         {
 
                             position.ModifyTakeProfitPrice(breakevenpointsell);
@@ -1036,7 +1048,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.4";
+        public const string VERSION = "1.3.5";
 
         #endregion
 
@@ -1196,8 +1208,8 @@ namespace cAlgo.Robots
         /// <summary>
         /// L'attivazione per il monitoraggio del Break Even per la logica negativa
         /// </summary>
-        [Parameter("Negative ?", Group = "Break Even", DefaultValue = true)]
-        public bool BreakEvenNegative { get; set; }
+        [Parameter("Profit Direction ?", Group = "Break Even", DefaultValue = Extensions.ProfitDirection.All)]
+        public Extensions.ProfitDirection BreakEvenProfitDirection { get; set; }
 
         /// <summary>
         /// L'attivazione per il monitoraggio del Break Even, se pari a zero disabilita il controllo
@@ -1304,7 +1316,7 @@ namespace cAlgo.Robots
             {
 
                 OnlyFirst = BreakEvenProtectionType == ProtectionType.OnlyFirst,
-                Negative = BreakEvenNegative,
+                ProfitDirection = BreakEvenProfitDirection,
                 Activation = (BreakEvenProtectionType != ProtectionType.Disabled) ? BreakEvenActivation : 0,
                 LimitBar = BreakEvenLimitBars,
                 Distance = BreakEvenDistance
