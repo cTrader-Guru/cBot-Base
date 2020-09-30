@@ -1036,7 +1036,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.3";
+        public const string VERSION = "1.3.4";
 
         #endregion
 
@@ -1087,8 +1087,8 @@ namespace cAlgo.Robots
         /// <summary>
         /// Al raggiungimento di questo netprofit chiude tutto
         /// </summary>
-        [Parameter("Money Target (zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 0.1)]
-        public double MoneyTarget { get; set; }
+        [Parameter("Money Target (%, zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0, Step = 0.1)]
+        public double MoneyTargetPercentage { get; set; }
 
         /// <summary>
         /// Vincolo il money target solo per un certo numero di trades in poi
@@ -1511,7 +1511,9 @@ monitor.OpenedInThisTrigger = false;
             // --> Criteri da stabilire con la strategia, monitor.Positions......
             bool numtargets = monitor.Positions.Length >= MoneyTargetTrades;
 
-            return (numtargets && MoneyTarget > 0 && monitor.Info.TotalNetProfit >= MoneyTarget);
+            double realmoneytarget = Math.Round((Account.Balance / 100) * MoneyTargetPercentage, monitor.Symbol.Digits);
+
+            return (numtargets && realmoneytarget > 0 && monitor.Info.TotalNetProfit >= realmoneytarget);
 
         }
 
