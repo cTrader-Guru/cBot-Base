@@ -196,6 +196,15 @@ namespace cAlgo
 
         }
 
+        public enum OpenTradeType
+        {
+
+            All,
+            Buy,
+            Sell
+
+        }
+
         #endregion
 
         #region Class
@@ -1048,7 +1057,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.5";
+        public const string VERSION = "1.3.6";
 
         #endregion
 
@@ -1074,6 +1083,9 @@ namespace cAlgo.Robots
 
         [Parameter("Loop", Group = "Strategy", DefaultValue = LoopType.OnBar)]
         public LoopType MyLoopType { get; set; }
+
+        [Parameter("Open Trade Type", Group = "Strategy", DefaultValue = Extensions.OpenTradeType.All)]
+        public Extensions.OpenTradeType MyOpenTradeType { get; set; }
 
         [Parameter("Stop", Group = "Strategy", DefaultValue = StopMode.Auto)]
         public StopMode MyStopType { get; set; }
@@ -1446,7 +1458,7 @@ namespace cAlgo.Robots
             double tmpTP = TP;
 
             // --> Se ho il segnale d'ingresso considerando i filtri allora procedo con l'ordine a mercato
-            if (triggerBuy)
+            if (MyOpenTradeType != Extensions.OpenTradeType.Sell && triggerBuy)
             {
 
                 // --> Devo dimensionare lo stop
@@ -1467,7 +1479,7 @@ namespace cAlgo.Robots
                 ExecuteMarketRangeOrder(TradeType.Buy, monitor.Symbol.Name, volumeInUnits, SLIPPAGE, monitor.Symbol.Ask, monitor.Label, tmpSL, tmpTP);
 
             }
-            else if (triggerSell)
+            else if (MyOpenTradeType != Extensions.OpenTradeType.Buy && triggerSell)
             {
 
                 // --> Devo dimensionare lo stop
