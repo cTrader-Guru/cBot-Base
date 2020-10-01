@@ -1057,7 +1057,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.6";
+        public const string VERSION = "1.3.7";
 
         #endregion
 
@@ -1266,16 +1266,16 @@ namespace cAlgo.Robots
         public MyTradeType OpenOnStart { get; set; }
 
         /// <summary>
-        /// Il colore del testo per eventuali messaggi da stampare sul chart
-        /// </summary>
-        [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral)]
-        public Extensions.ColorNameEnum TextColor { get; set; }
-
-        /// <summary>
         /// Flag per visualizzare eventuali messaggi di debug
         /// </summary>
         [Parameter("Verbose ?", Group = "Debug", DefaultValue = true)]
         public bool DebugVerbose { get; set; }
+
+        /// <summary>
+        /// Il colore del testo per eventuali messaggi da stampare sul chart
+        /// </summary>
+        [Parameter("Color Text", Group = "Styles", DefaultValue = Extensions.ColorNameEnum.Coral)]
+        public Extensions.ColorNameEnum TextColor { get; set; }
 
         #endregion
 
