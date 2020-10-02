@@ -1057,7 +1057,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.7";
+        public const string VERSION = "1.3.8";
 
         #endregion
 
@@ -1210,6 +1210,12 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Minimum (pips)", Group = "Auto Stop", DefaultValue = 10, MinValue = 1, Step = 0.1)]
         public double AutoMinPips { get; set; }
+
+        /// <summary>
+        /// Il numero di pips da aggiungere
+        /// </summary>
+        [Parameter("K (pips)", Group = "Auto Stop", DefaultValue = 3, MinValue = 0, Step = 0.1)]
+        public double KPips { get; set; }
 
         /// <summary>
         /// Il risk regard per il calcolo del take profit
@@ -1467,6 +1473,8 @@ namespace cAlgo.Robots
 
                     double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
                     tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
+                    tmpSL += KPips;
+
                     if (tmpSL < AutoMinPips)
                         tmpSL = AutoMinPips;
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
@@ -1488,6 +1496,8 @@ namespace cAlgo.Robots
 
                     double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
                     tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
+                    tmpSL += KPips;
+
                     if (tmpSL < AutoMinPips)
                         tmpSL = AutoMinPips;
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
@@ -1649,6 +1659,8 @@ monitor.OpenedInThisTrigger = false;
 
                         double lowest = monitor.Bars.LowPrices.Minimum(AutoStopPeriod);
                         tmpSL = monitor.Symbol.DigitsToPips(monitor.Symbol.Ask - lowest);
+                        tmpSL += KPips;
+
                         if (tmpSL < AutoMinPips)
                             tmpSL = AutoMinPips;
                         tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
@@ -1669,6 +1681,8 @@ monitor.OpenedInThisTrigger = false;
 
                         double highest = monitor.Bars.HighPrices.Maximum(AutoStopPeriod);
                         tmpSL = monitor.Symbol.DigitsToPips(highest - monitor.Symbol.Bid);
+                        tmpSL += KPips;
+
                         if (tmpSL < AutoMinPips)
                             tmpSL = AutoMinPips;
                         tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
