@@ -520,6 +520,9 @@ namespace cAlgo
 
                         double breakevenpointbuy = Math.Round(position.EntryPrice + distance, Symbol.Digits);
 
+                        if (position.StopLoss == breakevenpointbuy || position.TakeProfit == breakevenpointbuy)
+                            break;
+
                         if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Bid >= (position.EntryPrice + activation) || limitActivation) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
                         {
 
@@ -538,6 +541,9 @@ namespace cAlgo
                     case TradeType.Sell:
 
                         double breakevenpointsell = Math.Round(position.EntryPrice - distance, Symbol.Digits);
+
+                        if (position.StopLoss == breakevenpointsell || position.TakeProfit == breakevenpointsell)
+                            break;
 
                         if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
                         {
@@ -579,6 +585,9 @@ namespace cAlgo
 
                         trailing = Math.Round(Symbol.Bid - distance, Symbol.Digits);
 
+                        if (position.StopLoss == trailing || position.TakeProfit == trailing)
+                            break;
+
                         if ((Symbol.Bid >= (position.EntryPrice + activation)) && (position.StopLoss == null || position.StopLoss < trailing))
                         {
 
@@ -603,6 +612,9 @@ namespace cAlgo
 
                                 double newtrailing = Math.Round(limitpricedw + k, Symbol.Digits);
 
+                                if (position.StopLoss == newtrailing || position.TakeProfit == newtrailing)
+                                    break;
+
                                 if (position.StopLoss < newtrailing)
                                     position.ModifyStopLossPrice(newtrailing);
 
@@ -615,6 +627,9 @@ namespace cAlgo
                     case TradeType.Sell:
 
                         trailing = Math.Round(Symbol.Ask + Symbol.PipsToDigits(trailingdata.Distance), Symbol.Digits);
+
+                        if (position.StopLoss == trailing || position.TakeProfit == trailing)
+                            break;
 
                         if ((Symbol.Ask <= (position.EntryPrice - Symbol.PipsToDigits(trailingdata.Activation))) && (position.StopLoss == null || position.StopLoss > trailing))
                         {
@@ -639,6 +654,9 @@ namespace cAlgo
                                 double k = Math.Round(Symbol.Bid - limitpricedw, Symbol.Digits);
 
                                 double newtrailing = Math.Round(limitpriceup - k, Symbol.Digits);
+
+                                if (position.StopLoss == newtrailing || position.TakeProfit == newtrailing)
+                                    break;
 
                                 if (position.StopLoss > newtrailing)
                                     position.ModifyStopLossPrice(newtrailing);
@@ -1057,7 +1075,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.8";
+        public const string VERSION = "1.3.9";
 
         #endregion
 
