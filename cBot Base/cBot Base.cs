@@ -523,13 +523,13 @@ namespace cAlgo
                         if (position.StopLoss == breakevenpointbuy || position.TakeProfit == breakevenpointbuy)
                             break;
 
-                        if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Bid >= (position.EntryPrice + activation) || limitActivation) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
+                        if ((Symbol.Bid > breakevenpointbuy) && (limitActivation || (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Bid >= (position.EntryPrice + activation)))) && (position.StopLoss == null || position.StopLoss < breakevenpointbuy))
                         {
 
                             position.ModifyStopLossPrice(breakevenpointbuy);
 
                         }
-                        else if (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Bid <= (position.EntryPrice - activation) || limitActivation) && (position.TakeProfit == null || position.TakeProfit > breakevenpointbuy))
+                        else if ((Symbol.Ask < breakevenpointbuy) && (limitActivation || (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Bid <= (position.EntryPrice - activation)))) && (position.TakeProfit == null || position.TakeProfit > breakevenpointbuy))
                         {
 
                             position.ModifyTakeProfitPrice(breakevenpointbuy);
@@ -545,13 +545,13 @@ namespace cAlgo
                         if (position.StopLoss == breakevenpointsell || position.TakeProfit == breakevenpointsell)
                             break;
 
-                        if (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Ask <= (position.EntryPrice - activation)) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
+                        if ((Symbol.Bid < breakevenpointsell) && (limitActivation || (breakevendata.ProfitDirection != ProfitDirection.Negative && (Symbol.Ask <= (position.EntryPrice - activation)))) && (position.StopLoss == null || position.StopLoss > breakevenpointsell))
                         {
 
                             position.ModifyStopLossPrice(breakevenpointsell);
 
                         }
-                        else if (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Ask >= (position.EntryPrice + activation)) && (position.TakeProfit == null || position.TakeProfit < breakevenpointsell))
+                        else if ((Symbol.Ask > breakevenpointsell) && (limitActivation || (breakevendata.ProfitDirection != ProfitDirection.Positive && (Symbol.Ask >= (position.EntryPrice + activation)))) && (position.TakeProfit == null || position.TakeProfit < breakevenpointsell))
                         {
 
                             position.ModifyTakeProfitPrice(breakevenpointsell);
@@ -1075,7 +1075,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.3.9";
+        public const string VERSION = "1.4.0";
 
         #endregion
 
