@@ -1075,7 +1075,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.0";
+        public const string VERSION = "1.4.1";
 
         #endregion
 
@@ -1137,6 +1137,9 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Money Target Minimum Trades", Group = "Strategy", DefaultValue = 1, MinValue = 1, Step = 1)]
         public int MoneyTargetTrades { get; set; }
+
+        [Parameter("Recovery Multiplier", Group = "Strategy", DefaultValue = 1, MinValue = 1, Step = 0.5)]
+        public double RecoveryMultiplier { get; set; }
 
         /// <summary>
         /// Il broker dovrebbe considerare questo valore come massimo slittamento
@@ -1476,7 +1479,9 @@ namespace cAlgo.Robots
 
             // --> Calcolo la size in base al money management stabilito, ma prima devo resettare la misura del calcolo
             moneymanagement.PipToCalc = SL;
-            double volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+            double lotSize = (monitor.Info.TotalNetProfit < 0 && RecoveryMultiplier > 1 && monitor.Info.MaxVolumeInUnits > 0) ? Math.Round(monitor.Symbol.VolumeInUnitsToQuantity(monitor.Info.MaxVolumeInUnits) * RecoveryMultiplier, 2) : moneymanagement.GetLotSize();
+
+            double volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(lotSize);
 
             double tmpSL = SL;
             double tmpTP = TP;
@@ -1498,7 +1503,9 @@ namespace cAlgo.Robots
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                     moneymanagement.PipToCalc = tmpSL;
-                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+                    lotSize = (monitor.Info.TotalNetProfit < 0 && RecoveryMultiplier > 1 && monitor.Info.MaxVolumeInUnits > 0) ? Math.Round(monitor.Symbol.VolumeInUnitsToQuantity(monitor.Info.MaxVolumeInUnits) * RecoveryMultiplier, 2) : moneymanagement.GetLotSize();
+
+                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(lotSize);
 
                 }
 
@@ -1521,7 +1528,9 @@ namespace cAlgo.Robots
                     tmpTP = Math.Round(tmpSL * AutoStopRR, 2);
 
                     moneymanagement.PipToCalc = tmpSL;
-                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
+                    lotSize = (monitor.Info.TotalNetProfit < 0 && RecoveryMultiplier > 1 && monitor.Info.MaxVolumeInUnits > 0) ? Math.Round(monitor.Symbol.VolumeInUnitsToQuantity(monitor.Info.MaxVolumeInUnits) * RecoveryMultiplier, 2) : moneymanagement.GetLotSize();
+
+                    volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(lotSize);
 
                 }
 
