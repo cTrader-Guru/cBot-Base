@@ -10,6 +10,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using cAlgo.API;
 using cAlgo.API.Internals;
 
@@ -1075,7 +1076,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.1";
+        public const string VERSION = "1.4.2";
 
         #endregion
 
@@ -1098,6 +1099,9 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Preset information", Group = "Identity", DefaultValue = "Standard preset without any strategy")]
         public string PresetInfo { get; set; }
+
+        [Parameter("Max Cross Coworking (zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0)]
+        public int MaxCross { get; set; }
 
         [Parameter("Loop", Group = "Strategy", DefaultValue = LoopType.OnBar)]
         public LoopType MyLoopType { get; set; }
@@ -1462,7 +1466,7 @@ namespace cAlgo.Robots
             _checkResetTrigger(monitor);
 
             // --> Condizione condivisa, filtri generali, segnano il perimetro di azione limitando l'ingresso
-            bool sharedCondition = (!monitor.OpenedInThisBar && !monitor.OpenedInThisTrigger && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
+            bool sharedCondition = (_canCowork(monitor) && !monitor.OpenedInThisBar && !monitor.OpenedInThisTrigger && !monitor.InGAP(GAP) && !monitor.InPause(Server.Time) && monitor.Symbol.RealSpread() <= SpreadToTrigger && monitor.Positions.Length < MaxTrades);
 
             // --> Controllo la presenza di trigger d'ingresso tenendo conto i filtri
             bool triggerBuy = _calculateLongTrigger(_calculateLongFilter(sharedCondition));
@@ -1666,8 +1670,47 @@ monitor.OpenedInThisTrigger = false;
 
         }
 
+        /// <summary>
+        /// Restituisce le coppie attualmente a lavoro
+        /// </summary>
+        /// <returns></returns>
+        private List<string> _getOtherCross()
+        {
+
+            List<string> OtherCross = new List<string>();
+
+            foreach (Position position in Positions)
+            {
+
+                if (position.SymbolName != SymbolName && !OtherCross.Contains(position.SymbolName)) OtherCross.Add(position.SymbolName);
+
+            }
+
+            return OtherCross;
+
+        }
+
+        /// <summary>
+        /// Flag che ci autorizza a lavorare nel contesto, se ho già posizioni apro
+        /// </summary>
+        /// <returns></returns>
+        private bool _canCowork(Extensions.Monitor monitor)
+        {
+            
+            return (MaxCross == 0 || monitor.Positions.Length > 0) ? true : _getOtherCross().Count < MaxCross;
+
+        }
+
         private void _test(TradeType trigger, Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, string label = "TEST")
         {
+
+            if( !_canCowork(Monitor1))
+            {
+
+                _log("Can't Coworing!");
+                return;
+
+            }
 
             moneymanagement.PipToCalc = SL;
             double volumeInUnits = monitor.Symbol.QuantityToVolumeInUnits(moneymanagement.GetLotSize());
