@@ -1704,7 +1704,7 @@ monitor.OpenedInThisTrigger = false;
         private void _test(TradeType trigger, Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, string label = "TEST")
         {
 
-            if( !_canCowork(Monitor1))
+            if( !_canCowork(monitor))
             {
 
                 _log("Can't Coworing!");
