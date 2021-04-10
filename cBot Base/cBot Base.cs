@@ -234,6 +234,9 @@ namespace cAlgo
                 public Position LastPosition = null;
                 public double HighestHighAfterFirstOpen = 0;
                 public double LowestLowAfterFirstOpen = 0;
+                public double TotalLotsBuy = 0;
+                public double TotalLotsSell = 0;
+                public bool IAmInHedging = false;
 
             }
 
@@ -398,11 +401,11 @@ namespace cAlgo
                     }
 
                     // --> Poi tocca al break even
-                    if ((breakevendata != null && !breakevendata.OnlyFirst) || Positions.Length == 1)
+                    if (breakevendata != null && (!breakevendata.OnlyFirst || Positions.Length == 1))
                         _checkBreakEven(position, breakevendata);
 
                     // --> Poi tocca al trailing
-                    if ((trailingdata != null && !trailingdata.OnlyFirst) || Positions.Length == 1)
+                    if (trailingdata != null && (!trailingdata.OnlyFirst || Positions.Length == 1))
                         _checkTrailing(position, trailingdata);
 
                     Info.TotalNetProfit += position.NetProfit;
@@ -413,11 +416,13 @@ namespace cAlgo
                         case TradeType.Buy:
 
                             Info.BuyPositions++;
+                            Info.TotalLotsBuy += position.Quantity;
                             break;
 
                         case TradeType.Sell:
 
                             Info.SellPositions++;
+                            Info.TotalLotsSell += position.Quantity;
                             break;
 
                     }
@@ -439,6 +444,7 @@ namespace cAlgo
                 // --> Restituisce una Exception Overflow di una operazione aritmetica, da approfondire
                 //     Info.MidVolumeInUnits = Symbol.NormalizeVolumeInUnits(tmpVolume / Positions.Length,RoundingMode.ToNearest);
                 Info.MidVolumeInUnits = Math.Round(tmpVolume / Positions.Length, 0);
+                Info.IAmInHedging = (Positions.Length > 0 && Info.TotalLotsBuy == Info.TotalLotsSell);
 
                 return Info;
 
@@ -1064,6 +1070,22 @@ namespace cAlgo.Robots
 
         }
 
+        public enum DrawDownMode
+        {
+            Disabled,
+            Close,
+            Hedging
+
+        }
+
+        public enum AccCapital
+        {
+            Balance,
+            FreeMargin,
+            Equity
+
+        }
+
         #endregion
 
         #region Identity
@@ -1076,7 +1098,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.2";
+        public const string VERSION = "1.4.3";
 
         #endregion
 
@@ -1129,6 +1151,9 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Trailing", Group = "Strategy", DefaultValue = ProtectionType.OnlyFirst)]
         public ProtectionType TrailingProtectionType { get; set; }
+
+        [Parameter("Drawdown", Group = "Strategy", DefaultValue = DrawDownMode.Disabled)]
+        public DrawDownMode ddMode { get; set; }
 
         /// <summary>
         /// Al raggiungimento di questo netprofit chiude tutto
@@ -1290,6 +1315,12 @@ namespace cAlgo.Robots
         [Parameter("ProActive ?", Group = "Trailing", DefaultValue = false)]
         public bool TrailingProactive { get; set; }
 
+        [Parameter("Capital", Group = "Drawdown", DefaultValue = AccCapital.Balance)]
+        public AccCapital accCapital { get; set; }
+
+        [Parameter("Max %", Group = "Drawdown", DefaultValue = 20, MinValue = 0, MaxValue = 100, Step = 0.1)]
+        public double ddPercentage { get; set; }
+
         /// <summary>
         /// Opzione per il debug che apre una posizione di test (label TEST)
         /// </summary>
@@ -1429,7 +1460,7 @@ namespace cAlgo.Robots
             {
 
                 // --> Devo comunque controllare i breakeven e altro nel tick
-                Monitor1.Update(_checkClosePositions(Monitor1), BreakEvenData1, TrailingData1, SafeLoss, null);
+                Monitor1.Update(_checkClosePositions(Monitor1), Monitor1.Info.IAmInHedging ? null : BreakEvenData1, Monitor1.Info.IAmInHedging ? null : TrailingData1, SafeLoss, null);
 
             }
 
@@ -1459,8 +1490,12 @@ namespace cAlgo.Robots
         private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
 
-            // --> Aggiorno le informazioni necessarie per gestire la strategia
-            monitor.Update(_checkClosePositions(monitor), breakevendata, trailingdata, SafeLoss, null);
+            // --> Aggiorno le informazioni necessarie per gestire la strategia, controllo del BE e Trailing con i dati vecchi
+            monitor.Update(_checkClosePositions(monitor), monitor.Info.IAmInHedging ? null : breakevendata, monitor.Info.IAmInHedging ? null : trailingdata, SafeLoss, null);
+            
+            // --> Controllo il drawdown o se sono di nuovo in hedging
+            if (monitor.Info.IAmInHedging || _checkDrawdownMode(monitor))
+                return;
 
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
@@ -1682,7 +1717,8 @@ monitor.OpenedInThisTrigger = false;
             foreach (Position position in Positions)
             {
 
-                if (position.SymbolName != SymbolName && !OtherCross.Contains(position.SymbolName)) OtherCross.Add(position.SymbolName);
+                if (position.SymbolName != SymbolName && !OtherCross.Contains(position.SymbolName))
+                    OtherCross.Add(position.SymbolName);
 
             }
 
@@ -1696,15 +1732,103 @@ monitor.OpenedInThisTrigger = false;
         /// <returns></returns>
         private bool _canCowork(Extensions.Monitor monitor)
         {
-            
+
             return (MaxCross == 0 || monitor.Positions.Length > 0) ? true : _getOtherCross().Count < MaxCross;
+
+        }
+
+        private bool _checkDrawdownMode(Extensions.Monitor monitor)
+        {
+
+            bool managed = false;
+
+            if (ddMode == DrawDownMode.Disabled)
+                return managed;
+
+            // --> controllo se ho superato il limite per il DD
+            double mmmDD = _currentDDMoney();
+
+            if (monitor.Info.TotalNetProfit > mmmDD)
+                return managed;
+
+            // --> devo agire
+            switch (ddMode)
+            {
+
+                case DrawDownMode.Close:
+
+                    monitor.CloseAllPositions();
+
+                    Print("{0} : Closed {1} all positions, hit max drawdown {2}", MyLabel, Symbol.Name, mmmDD);
+                    managed = true;
+
+                    break;
+
+                case DrawDownMode.Hedging:
+
+                    if (monitor.Info.TotalLotsBuy < monitor.Info.TotalLotsSell)
+                    {
+
+                        var volumeInUnits = Symbol.QuantityToVolumeInUnits(monitor.Info.TotalLotsSell - monitor.Info.TotalLotsBuy);
+
+                        ExecuteMarketRangeOrder(TradeType.Buy, Symbol.Name, volumeInUnits, SLIPPAGE, Symbol.Ask, MyLabel, 0, 0);
+                        monitor.OpenedInThisBar = true;
+                        managed = true;
+
+                        Print("{0} : Hedged {1} all positions, hit max drawdown {2}", MyLabel, Symbol.Name, mmmDD);
+
+                    }
+                    else if (monitor.Info.TotalLotsBuy > monitor.Info.TotalLotsSell)
+                    {
+
+                        var volumeInUnits = Symbol.QuantityToVolumeInUnits(monitor.Info.TotalLotsBuy - monitor.Info.TotalLotsSell);
+
+                        ExecuteMarketRangeOrder(TradeType.Sell, Symbol.Name, volumeInUnits, SLIPPAGE, Symbol.Bid, MyLabel, 0, 0);
+                        monitor.OpenedInThisBar = true;
+                        managed = true;
+
+                        Print("{0} : Hedged {1} all positions, hit max drawdown {2}", MyLabel, Symbol.Name, mmmDD);
+
+                    }
+
+                    break;
+
+            }
+
+            return managed;
+
+        }
+
+
+        private double _currentDDMoney()
+        {
+
+            double myCapital = Account.Balance;
+
+            switch (accCapital)
+            {
+
+                case AccCapital.FreeMargin:
+
+                    myCapital = Account.FreeMargin;
+                    break;
+
+                case AccCapital.Equity:
+
+                    myCapital = Account.Equity;
+                    break;
+
+            }
+
+            // --> Restituisco la percentuale negativa
+            return (Math.Round((myCapital / 100) * ddPercentage, 2)) * -1;
 
         }
 
         private void _test(TradeType trigger, Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, string label = "TEST")
         {
 
-            if( !_canCowork(monitor))
+            if (!_canCowork(monitor))
             {
 
                 _log("Can't Coworing!");
