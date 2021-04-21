@@ -1098,7 +1098,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.3";
+        public const string VERSION = "1.4.4";
 
         #endregion
 
@@ -1139,6 +1139,9 @@ namespace cAlgo.Robots
         /// </summary>
         [Parameter("Safe StopLoss", Group = "Strategy", DefaultValue = 10, MinValue = 0, Step = 0.1)]
         public double StopLevel { get; set; }
+
+        [Parameter("Boring Close (bars, zero disabled)", Group = "Strategy", DefaultValue = 0, MinValue = 0)]
+        public int Boring { get; set; }
 
         /// <summary>
         /// L'attivazione per il moniotraggio del Break Even per uno o per tutti i trades
@@ -1369,7 +1372,7 @@ namespace cAlgo.Robots
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
             if (_canDraw())
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
-
+            
             // --> Determino il range di pausa
             Pause1 = new Extensions.Monitor.PauseTimes 
             {
@@ -1492,10 +1495,27 @@ namespace cAlgo.Robots
 
             // --> Aggiorno le informazioni necessarie per gestire la strategia, controllo del BE e Trailing con i dati vecchi
             monitor.Update(_checkClosePositions(monitor), monitor.Info.IAmInHedging ? null : breakevendata, monitor.Info.IAmInHedging ? null : trailingdata, SafeLoss, null);
-            
+
             // --> Controllo il drawdown o se sono di nuovo in hedging
             if (monitor.Info.IAmInHedging || _checkDrawdownMode(monitor))
                 return;
+
+            // --> Controllo se sono passate troppe candele e voglio chiudere, minimo 2 posizioni
+            if(Boring > 0 && monitor.Positions.Length >= 2 && monitor.Info.TotalNetProfit > 0)
+            {
+
+                // --> Ricavo l'indice della prima posizione
+                int  currentIndex = Bars.Count - 1;
+                int indexFirstTrade = Bars.OpenTimes.GetIndexByTime(monitor.Info.FirstPosition.EntryTime);
+
+                if ( (currentIndex - indexFirstTrade) >= Boring ) {
+
+                    monitor.CloseAllPositions();
+                    _log("Closed for Boring Bars ");
+                    return;
+                }
+
+            }
 
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
@@ -1798,8 +1818,7 @@ monitor.OpenedInThisTrigger = false;
             return managed;
 
         }
-
-
+        
         private double _currentDDMoney()
         {
 
