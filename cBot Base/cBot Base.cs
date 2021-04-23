@@ -1098,7 +1098,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.4";
+        public const string VERSION = "1.4.5";
 
         #endregion
 
@@ -1372,7 +1372,7 @@ namespace cAlgo.Robots
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
             if (_canDraw())
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
-            
+
             // --> Determino il range di pausa
             Pause1 = new Extensions.Monitor.PauseTimes 
             {
@@ -1452,21 +1452,34 @@ namespace cAlgo.Robots
         protected override void OnTick()
         {
 
+            // --> Devo comunque controllare i breakeven e altro nel tick
+            Monitor1.Update(_checkClosePositions(Monitor1), Monitor1.Info.IAmInHedging ? null : BreakEvenData1, Monitor1.Info.IAmInHedging ? null : TrailingData1, SafeLoss, null);
+
+            // --> Controllo il drawdown o se sono di nuovo in hedging
+            if (Monitor1.Info.IAmInHedging || _checkDrawdownMode(Monitor1))
+                return;
+
+            // --> Controllo se sono passate troppe candele e voglio chiudere, minimo 2 posizioni
+            if (Boring > 0 && Monitor1.Positions.Length >= 2 && Monitor1.Info.TotalNetProfit > 0)
+            {
+
+                // --> Ricavo l'indice della prima posizione
+                int currentIndex = Bars.Count - 1;
+                int indexFirstTrade = Bars.OpenTimes.GetIndexByTime(Monitor1.Info.FirstPosition.EntryTime);
+
+                if ((currentIndex - indexFirstTrade) >= Boring)
+                {
+
+                    Monitor1.CloseAllPositions();
+                    _log("Closed for Boring Bars ");
+                    return;
+                }
+
+            }
+
             // --> Eseguo il loop solo se desidero farlo ad ogni Tick
             if (MyLoopType == LoopType.OnTick)
-            {
-
                 _loop(Monitor1, MonenyManagement1, BreakEvenData1, TrailingData1);
-
-            }
-            else
-            {
-
-                // --> Devo comunque controllare i breakeven e altro nel tick
-                Monitor1.Update(_checkClosePositions(Monitor1), Monitor1.Info.IAmInHedging ? null : BreakEvenData1, Monitor1.Info.IAmInHedging ? null : TrailingData1, SafeLoss, null);
-
-            }
-
 
         }
 
@@ -1492,31 +1505,7 @@ namespace cAlgo.Robots
 
         private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
-
-            // --> Aggiorno le informazioni necessarie per gestire la strategia, controllo del BE e Trailing con i dati vecchi
-            monitor.Update(_checkClosePositions(monitor), monitor.Info.IAmInHedging ? null : breakevendata, monitor.Info.IAmInHedging ? null : trailingdata, SafeLoss, null);
-
-            // --> Controllo il drawdown o se sono di nuovo in hedging
-            if (monitor.Info.IAmInHedging || _checkDrawdownMode(monitor))
-                return;
-
-            // --> Controllo se sono passate troppe candele e voglio chiudere, minimo 2 posizioni
-            if(Boring > 0 && monitor.Positions.Length >= 2 && monitor.Info.TotalNetProfit > 0)
-            {
-
-                // --> Ricavo l'indice della prima posizione
-                int  currentIndex = Bars.Count - 1;
-                int indexFirstTrade = Bars.OpenTimes.GetIndexByTime(monitor.Info.FirstPosition.EntryTime);
-
-                if ( (currentIndex - indexFirstTrade) >= Boring ) {
-
-                    monitor.CloseAllPositions();
-                    _log("Closed for Boring Bars ");
-                    return;
-                }
-
-            }
-
+            
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
 
@@ -1818,7 +1807,7 @@ monitor.OpenedInThisTrigger = false;
             return managed;
 
         }
-        
+
         private double _currentDDMoney()
         {
 
