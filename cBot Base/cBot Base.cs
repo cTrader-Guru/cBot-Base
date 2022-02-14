@@ -1098,7 +1098,7 @@ namespace cAlgo.Robots
         /// <summary>
         /// La versione del prodotto, progressivo, utilie per controllare gli aggiornamenti se viene reso disponibile sul sito ctrader.guru
         /// </summary>
-        public const string VERSION = "1.4.5";
+        public const string VERSION = "1.4.6";
 
         #endregion
 
@@ -1353,6 +1353,7 @@ namespace cAlgo.Robots
         Extensions.Monitor.TrailingData TrailingData1;
 
         private double SafeLoss = 0;
+        bool CanDraw;
 
         #endregion
 
@@ -1368,9 +1369,10 @@ namespace cAlgo.Robots
             Print("{0} : {1}", NAME, VERSION);
 
             SafeLoss = (MyStopType == StopMode.Auto || SL > 0) ? StopLevel : 0;
+            CanDraw = (RunningMode == RunningMode.RealTime || RunningMode == RunningMode.VisualBacktesting);
 
             // --> Messaggio di avvertimento nel caso incui si eseguisse senza modifiche logiche
-            if (_canDraw())
+            if (CanDraw)
                 Chart.DrawStaticText(NAME, "ATTENTION : CBOT BASE, EDIT THIS TEMPLATE ONLY", VerticalAlignment.Top, HorizontalAlignment.Left, Extensions.ColorFromEnum(TextColor));
 
             // --> Determino il range di pausa
@@ -1505,7 +1507,7 @@ namespace cAlgo.Robots
 
         private void _loop(Extensions.Monitor monitor, Extensions.MonenyManagement moneymanagement, Extensions.Monitor.BreakEvenData breakevendata, Extensions.Monitor.TrailingData trailingdata)
         {
-            
+
             // --> Controllo se ho il consenso a procedere con i trigger
             _checkResetTrigger(monitor);
 
@@ -1898,16 +1900,6 @@ monitor.OpenedInThisTrigger = false;
                     break;
 
             }
-
-        }
-
-        /// <summary>
-        /// Controlla se sono possibili operazioni grafiche sul Chart, da utilizzare prima di ogni chiamata al Chart
-        /// </summary>
-        private bool _canDraw()
-        {
-
-            return RunningMode == RunningMode.RealTime || RunningMode == RunningMode.VisualBacktesting;
 
         }
 
